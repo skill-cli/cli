@@ -1,0 +1,4 @@
+interface:
+  display_name: "skill-cli"
+  short_description: "Use the skill CLI to manage agent skills"
+  default_prompt: "Use the skill CLI to install, restore, list, update, remove, watch, or review agent skills."

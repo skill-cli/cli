@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swift:
+    name: Swift Package
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Toolchain
+        run: |
+          swift --version
+          xcrun swift-format --version
+
+      - name: Format
+        run: xcrun swift-format lint --configuration .swift-format --recursive Package.swift Sources Tests
+
+      - name: Test
+        run: swift test
+
+      - name: Diff Check
+        run: git diff --check
+
+      - name: CLI Help Smoke
+        run: |
+          set -euo pipefail
+          swift run skill --help >/dev/null
+          swift run skill add --help >/dev/null
+          swift run skill install --help >/dev/null
+          swift run skill list --help >/dev/null
+          swift run skill remove --help >/dev/null
+          swift run skill update --help >/dev/null
+          swift run skill status --help >/dev/null
+          swift run skill diff --help >/dev/null
+          swift run skill review --help >/dev/null
+          swift run skill review check --help >/dev/null
+
+      - name: Unknown Command Smoke
+        run: |
+          set -euo pipefail
+          for command in unknown-command i sync experimental_sync experimental_install; do
+            set +e
+            output="$(swift run skill "$command" --help 2>&1)"
+            exit_status="$?"
+            set -e
+            if [[ "$exit_status" -ne 64 ]]; then
+              echo "$output"
+              echo "expected $command to exit 64, got $exit_status"
+              exit 1
+            fi
+            grep "Unknown command '$command'" <<<"$output"
+          done
