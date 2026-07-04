@@ -347,6 +347,185 @@ struct InstallerTests {
         atPath: home.appendingPathComponent(".cursor/skills/shared-user").path))
   }
 
+  @Test func installResolvedSkipsMissingUserLocalSourceAndContinues() throws {
+    let project = try behaviorTemporaryDirectory()
+    let home = try behaviorTemporaryDirectory()
+    let missingSource = try behaviorTemporaryDirectory()
+    let keepSource = try behaviorTemporaryDirectory()
+    _ = try writeBehaviorSkill(
+      root: missingSource, path: "skills/missing-local", name: "missing-local")
+    _ = try writeBehaviorSkill(root: keepSource, path: "skills/keep-local", name: "keep-local")
+    let environment = RuntimeEnvironment(
+      projectDirectory: project,
+      homeDirectory: home,
+      environment: [:])
+
+    _ = try RuntimeService.add(
+      AddOptions(
+        source: missingSource.path,
+        agents: [.codex],
+        skillNames: ["missing-local"],
+        scope: .global,
+        mode: .symlink,
+        environment: environment))
+    _ = try RuntimeService.add(
+      AddOptions(
+        source: keepSource.path,
+        agents: [.codex],
+        skillNames: ["keep-local"],
+        scope: .global,
+        mode: .symlink,
+        environment: environment))
+
+    try FileManager.default.removeItem(at: missingSource)
+    try FileManager.default.removeItem(at: home.appendingPathComponent(".agents/skills"))
+
+    let report = try RuntimeService.installResolvedReport(scope: .global, environment: environment)
+
+    #expect(report.installed.map(\.skill) == ["keep-local"])
+    #expect(report.skipped.count == 1)
+    #expect(report.skipped[0].skill == "missing-local")
+    #expect(report.skipped[0].reason == .sourceMissing)
+    #expect(report.skipped[0].path == missingSource.path)
+    #expect(
+      FileManager.default.fileExists(
+        atPath: home.appendingPathComponent(".agents/skills/keep-local/SKILL.md").path))
+    #expect(
+      !FileManager.default.fileExists(
+        atPath: home.appendingPathComponent(".agents/skills/missing-local/SKILL.md").path))
+  }
+
+  @Test func editModeLinksCanonicalToLocalSourceAndProjectsAgentsThroughCanonical() throws {
+    let project = try behaviorTemporaryDirectory()
+    let home = try behaviorTemporaryDirectory()
+    let sourceRoot = try behaviorTemporaryDirectory()
+    let skillDir = try writeBehaviorSkill(root: sourceRoot, path: "skills/editable", name: "editable")
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: home, environment: [:])
+
+    let outcome = try RuntimeService.add(
+      AddOptions(
+        source: sourceRoot.path,
+        agents: [.codex, .claudeCode],
+        skillNames: ["editable"],
+        mode: .edit,
+        environment: environment))
+
+    let canonical = project.appendingPathComponent(".agents/skills/editable")
+    let claude = project.appendingPathComponent(".claude/skills/editable")
+    #expect(outcome.installed.first?.mode == .edit)
+    #expect(outcome.installed.first?.materialization == .editInstalled)
+    #expect((try? canonical.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true)
+    #expect((try? claude.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true)
+    let canonicalTarget = try FileManager.default.destinationOfSymbolicLink(atPath: canonical.path)
+    let resolvedCanonicalTarget = canonical.deletingLastPathComponent()
+      .appendingPathComponent(canonicalTarget)
+      .resolvingSymlinksInPath().standardizedFileURL.path
+    #expect(resolvedCanonicalTarget == skillDir.resolvingSymlinksInPath().standardizedFileURL.path)
+    let claudeTarget = try FileManager.default.destinationOfSymbolicLink(atPath: claude.path)
+    #expect(claudeTarget == "../../.agents/skills/editable")
+
+    try "live".write(
+      to: skillDir.appendingPathComponent("notes.md"), atomically: true, encoding: .utf8)
+    #expect(FileManager.default.fileExists(atPath: canonical.appendingPathComponent("notes.md").path))
+    #expect(FileManager.default.fileExists(atPath: claude.appendingPathComponent("notes.md").path))
+
+    let lock = try InstallLockStore.load(scope: .project, environment: environment)
+    let installations = try #require(lock.pins.first?.skills.first?.installations)
+    let codexInstall = try #require(installations.first { $0.agent == .codex })
+    let claudeInstall = try #require(installations.first { $0.agent == .claudeCode })
+    #expect(codexInstall.mode == .edit)
+    #expect(codexInstall.materialization == .editInstalled)
+    #expect(
+      URL(fileURLWithPath: try #require(codexInstall.sourcePath)).standardizedFileURL
+        .resolvingSymlinksInPath().path
+        == skillDir.standardizedFileURL.resolvingSymlinksInPath().path)
+    #expect(
+      URL(fileURLWithPath: try #require(codexInstall.linkTarget)).standardizedFileURL
+        .resolvingSymlinksInPath().path
+        == skillDir.standardizedFileURL.resolvingSymlinksInPath().path)
+    #expect(claudeInstall.linkTarget == canonical.path)
+
+    let managed = try RuntimeService.listManaged(
+      scope: .project, agents: [.codex, .claudeCode], environment: environment)
+    #expect(managed.allSatisfy { $0.status == .editLinked })
+  }
+
+  @Test func editModeRejectsNonEditableSourcesAndWatchFlows() throws {
+    let project = try behaviorTemporaryDirectory()
+    let home = try behaviorTemporaryDirectory()
+    let sourceRoot = try behaviorTemporaryDirectory()
+    _ = try writeBehaviorSkill(root: sourceRoot, path: "skills/editable", name: "editable")
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: home, environment: [:])
+
+    #expect(throws: CoreError.invalidSource("--mode edit requires an unpinned local source")) {
+      try RuntimeService.add(
+        AddOptions(
+          source: "owner/repo",
+          agents: [.codex],
+          skillNames: ["editable"],
+          mode: .edit,
+          environment: environment))
+    }
+    #expect(throws: CoreError.invalidSource("--mode edit requires an unpinned local source")) {
+      try RuntimeService.add(
+        AddOptions(
+          source: sourceRoot.path,
+          agents: [.codex],
+          skillNames: ["editable"],
+          mode: .edit,
+          sourceRequirement: .branch("main"),
+          environment: environment))
+    }
+    #expect(
+      throws: CoreError.invalidSource(
+        "--mode edit cannot be combined with --watch or --watch-only")
+    ) {
+      try RuntimeService.add(
+        AddOptions(
+          source: sourceRoot.path,
+          agents: [.codex],
+          skillNames: ["editable"],
+          mode: .edit,
+          watch: true,
+          environment: environment))
+    }
+    #expect(
+      throws: CoreError.invalidSource("--mode edit cannot be used with update --from-watch")
+    ) {
+      try RuntimeService.updateFromWatch(
+        "missing-watch", mode: .edit, environment: environment, apply: true)
+    }
+  }
+
+  @Test func installResolvedRestoresEditSymlinkWithoutCopying() throws {
+    let project = try behaviorTemporaryDirectory()
+    let home = try behaviorTemporaryDirectory()
+    let sourceRoot = try behaviorTemporaryDirectory()
+    let skillDir = try writeBehaviorSkill(root: sourceRoot, path: "skills/restored", name: "restored")
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: home, environment: [:])
+
+    _ = try RuntimeService.add(
+      AddOptions(
+        source: sourceRoot.path,
+        agents: [.codex],
+        skillNames: ["restored"],
+        mode: .edit,
+        environment: environment))
+    let installed = project.appendingPathComponent(".agents/skills/restored")
+    try FileManager.default.removeItem(at: installed)
+
+    let report = try RuntimeService.installResolvedReport(scope: .project, environment: environment)
+
+    #expect(report.installed.map(\.skill) == ["restored"])
+    #expect((try? installed.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true)
+    try "live".write(
+      to: skillDir.appendingPathComponent("live.md"), atomically: true, encoding: .utf8)
+    #expect(FileManager.default.fileExists(atPath: installed.appendingPathComponent("live.md").path))
+  }
+
   @Test func removesUserCanonicalInstallAfterLastReference() throws {
     let project = try behaviorTemporaryDirectory()
     let home = try behaviorTemporaryDirectory()

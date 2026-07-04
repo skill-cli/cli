@@ -9,7 +9,7 @@ Accepted
 The canonical flag surface names domain state directly:
 
 - `--scope project|user` for install/list/remove/update scope
-- `--mode link|copy` for install mode
+- `--mode link|copy|edit` for install mode
 - `install` with no source to materialize project skills from
   `.agent/skills.resolved`
 - `list <source>` to inspect installable skills from a source
@@ -28,9 +28,11 @@ retains preview behavior unless `--apply` is present.
 ## Rationale
 
 `project` and `user` match the installation locations users reason about.
-`link` and `copy` are install modes, not separate boolean toggles. `--apply`
-matches the command behavior more precisely than a confirmation flag because it
-controls preview-versus-mutation semantics.
+`link`, `copy`, and `edit` are install modes, not separate boolean toggles.
+`link` is the managed canonical/projection mode, `copy` is physical-copy mode,
+and `edit` is explicit local-development source-link mode. `--apply` matches
+the command behavior more precisely than a confirmation flag because it controls
+preview-versus-mutation semantics.
 
 `list <source>` is clearer than `add --list` because source inspection is not
 an install operation. Default `list` follows the same resolved-state boundary as

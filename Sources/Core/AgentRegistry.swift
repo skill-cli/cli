@@ -49,6 +49,14 @@ public enum InstallScope: String, Codable, Sendable {
 public enum InstallMode: String, Codable, Sendable {
   case symlink
   case copy
+  case edit
+}
+
+public enum InstallMaterialization: String, Codable, Equatable, Sendable {
+  case copyInstalled = "copy-installed"
+  case linkInstalled = "link-installed"
+  case editInstalled = "edit-installed"
+  case copyFallback = "copy-fallback"
 }
 
 public struct RuntimeEnvironment: Sendable {

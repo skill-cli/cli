@@ -110,7 +110,7 @@ struct List: ParsableCommand {
     }
     print(scope == .user ? "User Skills" : "Project Skills")
     for skill in filteredInstalled {
-      let status = skill.isInstalled ? "installed" : "missing"
+      let status = skill.status.rawValue
       let source = skill.sourceIdentity.map { "\t\($0)" } ?? ""
       print("\(skill.name)\t\(skill.agent.rawValue)\t\(status)\t\(skill.path)\(source)")
     }

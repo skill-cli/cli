@@ -108,10 +108,43 @@ public struct InstallResult: Codable, Equatable, Sendable {
   public var scope: InstallScope
   public var mode: InstallMode
   public var path: String
+  public var materialization: InstallMaterialization?
+  public var sourcePath: String?
+  public var linkTarget: String?
+  public var fallback: Bool?
+
+  public init(
+    skill: String,
+    agent: AgentID,
+    scope: InstallScope,
+    mode: InstallMode,
+    path: String,
+    materialization: InstallMaterialization? = nil,
+    sourcePath: String? = nil,
+    linkTarget: String? = nil,
+    fallback: Bool? = nil
+  ) {
+    self.skill = skill
+    self.agent = agent
+    self.scope = scope
+    self.mode = mode
+    self.path = path
+    self.materialization = materialization
+    self.sourcePath = sourcePath
+    self.linkTarget = linkTarget
+    self.fallback = fallback
+  }
 }
 
 public enum Installer {
   public static func install(_ request: InstallRequest) throws -> [InstallResult] {
+    if request.mode == .edit {
+      guard request.source.parsed.type == .local, request.source.parsed.requirement == nil,
+        request.source.watchID == nil
+      else {
+        throw CoreError.invalidSource("--mode edit requires an unpinned local source")
+      }
+    }
     var results: [InstallResult] = []
     for skill in request.skills {
       let installName = PathSafety.sanitizeName(skill.name)
@@ -124,13 +157,19 @@ public enum Installer {
       ).appendingPathComponent(installName)
       let needsCanonical =
         request.mode == .symlink
-        || agents.contains {
+        || request.mode == .edit
+        || (request.mode == .copy
+          && agents.contains {
           AgentRegistry.usesCanonicalSkillsDirectory(
             for: $0, scope: request.scope, environment: request.environment)
-        }
+          })
 
       if needsCanonical {
-        try installDirectory(source: sourceURL, destination: canonical, mode: .copy)
+        if request.mode == .edit {
+          try editLinkDirectory(target: sourceURL, destination: canonical)
+        } else {
+          try installDirectory(source: sourceURL, destination: canonical, mode: .copy)
+        }
       }
 
       for agent in agents {
@@ -143,27 +182,47 @@ public enum Installer {
           try removeStaleNativeProjection(
             installName: installName, agent: agent, scope: request.scope,
             environment: request.environment)
-        } else if sameResolvedLocation(canonical, destination), needsCanonical {
+        } else if request.mode != .edit && sameResolvedLocation(canonical, destination),
+          needsCanonical
+        {
           // The agent's native skill directory already resolves to canonical storage.
         } else if request.mode == .copy {
           try installDirectory(source: sourceURL, destination: destination, mode: .copy)
+        } else if request.mode == .edit {
+          try editProjectionDirectory(target: canonical, destination: destination)
         } else {
           try linkDirectory(
             target: canonical, destination: destination, fallbackCopySource: canonical)
         }
+
+        let materialization = materializationForInstalledPath(
+          mode: request.mode,
+          destination: destination,
+          canonical: canonical,
+          sourceURL: sourceURL,
+          needsCanonical: needsCanonical
+        )
 
         let relativePath = relative(destination.path, to: request.environment.projectDirectory.path)
         let installation = InstallationPin(
           scope: request.scope,
           agent: agent,
           mode: request.mode,
-          path: request.scope == .project ? relativePath : destination.path
+          path: request.scope == .project ? relativePath : destination.path,
+          materialization: materialization.kind,
+          sourcePath: sourceURL.path,
+          linkTarget: materialization.linkTarget,
+          fallback: materialization.fallback
         )
         installations.append(installation)
         results.append(
           InstallResult(
             skill: skill.name, agent: agent, scope: request.scope, mode: request.mode,
-            path: destination.path))
+            path: destination.path,
+            materialization: materialization.kind,
+            sourcePath: sourceURL.path,
+            linkTarget: materialization.linkTarget,
+            fallback: materialization.fallback))
       }
 
       let pinnedSkill = PinnedSkill(
@@ -265,6 +324,8 @@ public enum Installer {
       } catch {
         try copyDirectory(source: source, destination: destination)
       }
+    case .edit:
+      try editLinkDirectory(target: source, destination: destination)
     }
   }
 
@@ -285,6 +346,62 @@ public enum Installer {
     } catch {
       try copyDirectory(source: fallbackCopySource, destination: destination)
     }
+  }
+
+  private static func editLinkDirectory(target: URL, destination: URL) throws {
+    if sameResolvedLocation(target, destination) {
+      return
+    }
+    try FileManager.default.createDirectory(
+      at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if FileManager.default.fileExists(atPath: destination.path) || isSymlink(destination) {
+      try FileManager.default.removeItem(at: destination)
+    }
+    try FileManager.default.createSymbolicLink(
+      atPath: destination.path,
+      withDestinationPath: relative(target.path, to: destination.deletingLastPathComponent().path)
+    )
+  }
+
+  private static func materializationForInstalledPath(
+    mode: InstallMode,
+    destination: URL,
+    canonical: URL,
+    sourceURL: URL,
+    needsCanonical: Bool
+  ) -> (kind: InstallMaterialization, linkTarget: String?, fallback: Bool) {
+    switch mode {
+    case .copy:
+      return (.copyInstalled, nil, false)
+    case .edit:
+      if needsCanonical && sameStandardizedLocation(canonical, destination) {
+        return (.editInstalled, sourceURL.path, false)
+      }
+      return (.editInstalled, canonical.path, false)
+    case .symlink:
+      if needsCanonical && sameResolvedLocation(canonical, destination) {
+        return (.copyInstalled, nil, false)
+      }
+      if isSymlink(destination) {
+        return (.linkInstalled, canonical.path, false)
+      }
+      return (.copyFallback, canonical.path, true)
+    }
+  }
+
+  private static func editProjectionDirectory(target: URL, destination: URL) throws {
+    if sameStandardizedLocation(target, destination) {
+      return
+    }
+    try FileManager.default.createDirectory(
+      at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if FileManager.default.fileExists(atPath: destination.path) || isSymlink(destination) {
+      try FileManager.default.removeItem(at: destination)
+    }
+    try FileManager.default.createSymbolicLink(
+      atPath: destination.path,
+      withDestinationPath: relative(target.path, to: destination.deletingLastPathComponent().path)
+    )
   }
 
   private static func copyDirectory(source: URL, destination: URL) throws {

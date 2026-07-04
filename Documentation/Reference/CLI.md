@@ -26,6 +26,7 @@ Visible commands:
 skill add <source>
 skill install
 skill list [source]
+skill doctor
 skill remove [skills...]
 skill update [skills...]
 skill status <source> --watch
@@ -93,6 +94,7 @@ or well-known provider:
 ```bash
 skill list <source>
 skill add <source> --agent codex --skill my-skill
+skill add <local-source> --mode edit --agent codex --skill my-skill
 skill add <source> --mode copy --agent codex cursor
 skill add <source> --all --agent "*"
 skill add <source> --scope user
@@ -101,6 +103,17 @@ skill add <source> --scope user
 Install defaults are project scope, link mode, Codex agent, and the selected
 skill. `--all` means all discovered skills only. Targeting every supported
 agent is explicit through `--agent "*"`.
+
+Install modes:
+
+- `link` is the default managed mode. It materializes a canonical installed copy
+  and links native-only agent projections to that canonical copy when needed.
+- `copy` writes physical copies to the selected install surfaces.
+- `edit` is local-development mode. It requires an unpinned local source,
+  symlinks the canonical installed entry to the local source skill directory,
+  and links agent projections through that canonical entry. It is rejected for
+  remote sources, well-known sources, source requirement flags, and watch
+  installs.
 
 Supported agents:
 
@@ -136,9 +149,22 @@ skill remove --all
 ```
 
 `skill list` reads the relevant `skills.resolved` file and reports whether each
-managed installation still exists on disk. `skill list --all` scans agent skill
+managed installation still exists on disk. Status values include `installed`,
+`missing`, `broken-link`, `copy-drift`, `source-missing`, `copy-fallback`,
+`edit-linked`, and `installed-only`. `skill list --all` scans agent skill
 directories and includes unmanaged skills that are not tracked by resolved
 state.
+
+Diagnose install state without mutating files:
+
+```bash
+skill doctor
+skill doctor --scope user --agent codex --json
+```
+
+`skill doctor` checks resolved-state readability, managed install health,
+broken links, missing local sources, copy drift, fallback copies, and unmanaged
+installed-only skills.
 
 Update from resolved state:
 

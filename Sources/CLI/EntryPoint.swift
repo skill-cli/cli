@@ -14,6 +14,7 @@ struct RootCommand: ParsableCommand {
         skill add <source> --watch
         skill add <source> --watch-only
         skill list
+        skill doctor
         skill list --watch
         skill status <source> --watch
         skill diff <source> --watch --path <path>
@@ -39,6 +40,7 @@ struct RootCommand: ParsableCommand {
       Add.self,
       Install.self,
       List.self,
+      Doctor.self,
       Remove.self,
       Update.self,
       Status.self,
@@ -56,6 +58,7 @@ struct RootCommand: ParsableCommand {
     print("  skill add <source> --watch")
     print("  skill add <source> --watch-only")
     print("  skill list")
+    print("  skill doctor")
     print("  skill list --watch")
     print("  skill status <source> --watch")
     print("  skill diff <source> --watch --path <path>")
@@ -99,6 +102,7 @@ private let registeredTopLevelCommands: Set<String> = [
   "add",
   "check",
   "diff",
+  "doctor",
   "init",
   "install",
   "list",

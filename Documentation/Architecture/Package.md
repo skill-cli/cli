@@ -104,8 +104,9 @@ using SwiftPM runtime model types. `SourceRequirement` records first-party
 requirement intent such as branch, revision, exact version, lower-bound
 version, minor range, and explicit range. `SourcePin` records source identity,
 location, requirement, and resolved state; `PinnedSkill` records the installed
-skill path and content hash; `InstallationPin` records the agent, scope, mode,
-and target path.
+skill path and content hash; `InstallationPin` records the agent, scope,
+requested mode, target path, and optional actual materialization metadata such
+as source path, link target, and fallback-copy marker.
 
 This keeps source identity, restore, update, and diff behavior deterministic
 while preserving skill-specific state that SwiftPM package graph types do not
@@ -124,6 +125,21 @@ project skill directory is `.agents/skills` use the canonical user directory
 directly; native-only agents receive a projection in their own skill directory.
 Agent-facing skill directories expose installed skills; they do not own source
 checkout state.
+
+Install modes are explicit:
+
+- `link` is the default CLI mode and maps to the registry's managed symlink
+  mode. It keeps skill-cli-owned canonical copies and agent projections.
+- `copy` materializes physical copies for the selected install surfaces.
+- `edit` is restricted to unpinned local sources. It creates canonical
+  installed entries that symlink to local source skill directories, then links
+  agent projections through those canonical entries. It is not valid for remote,
+  well-known, pinned, or watch-based sources.
+
+`list` and `doctor` derive install health from resolved state plus filesystem
+inspection. Managed statuses include missing installs, broken links, source
+missing, copy drift, fallback copies, edit-linked installs, and unmanaged
+installed-only directories.
 
 The schema is SPM-inspired rather than SwiftPM-backed by design:
 

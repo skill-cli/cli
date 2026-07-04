@@ -127,6 +127,75 @@ struct InstalledSkillListingTests {
     #expect(installed.isEmpty)
   }
 
+  @Test func reportsEditSourceMissingCopyDriftAndInstalledOnlyStatuses() throws {
+    let project = try listInstalledTemporaryDirectory()
+    let home = try listInstalledTemporaryDirectory()
+    let sourceRoot = project.appendingPathComponent("source")
+    let skillDir = sourceRoot.appendingPathComponent("skills/editable")
+    try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
+    try writeInstalledSkillFile(
+      skillDir.appendingPathComponent("SKILL.md"),
+      contents: """
+        ---
+        name: editable
+        description: Editable skill
+        ---
+        """)
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: home, environment: [:])
+
+    _ = try RuntimeService.add(
+      AddOptions(
+        source: sourceRoot.path,
+        agents: [.codex],
+        skillNames: ["editable"],
+        mode: .edit,
+        environment: environment))
+    var managed = try RuntimeService.listManaged(
+      scope: .project, agents: [.codex], environment: environment)
+    #expect(managed.first?.status == .editLinked)
+
+    try FileManager.default.removeItem(at: sourceRoot)
+    managed = try RuntimeService.listManaged(
+      scope: .project, agents: [.codex], environment: environment)
+    #expect(managed.first?.status == .sourceMissing)
+
+    let copySource = project.appendingPathComponent("copy-source")
+    let copySkill = copySource.appendingPathComponent("skills/copied")
+    try FileManager.default.createDirectory(at: copySkill, withIntermediateDirectories: true)
+    try writeInstalledSkillFile(
+      copySkill.appendingPathComponent("SKILL.md"),
+      contents: """
+        ---
+        name: copied
+        description: Copied skill
+        ---
+        """)
+    _ = try RuntimeService.add(
+      AddOptions(
+        source: copySource.path,
+        agents: [.codex],
+        skillNames: ["copied"],
+        mode: .copy,
+        environment: environment))
+    try "changed".write(
+      to: copySkill.appendingPathComponent("notes.md"), atomically: true, encoding: .utf8)
+    managed = try RuntimeService.listManaged(
+      scope: .project, agents: [.codex], environment: environment)
+    #expect(managed.first { $0.name == "copied" }?.status == .copyDrift)
+
+    try writeInstalledSkill(project: project, name: "manual-only")
+    let all = try RuntimeService.listInstalled(
+      scope: .project, agents: [.codex], environment: environment)
+    #expect(all.first { $0.name == "manual-only" }?.status == .installedOnly)
+
+    let report = try RuntimeService.doctor(scope: .project, agents: [.codex], environment: environment)
+    #expect(report.ok == false)
+    #expect(report.checks.contains { $0.message.contains("source-missing") })
+    #expect(report.checks.contains { $0.message.contains("copy-drift") })
+    #expect(report.checks.contains { $0.message.contains("installed-only") })
+  }
+
 }
 
 private func writeInstalledSkill(

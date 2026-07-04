@@ -8,6 +8,7 @@ struct CLISurfaceTests {
     #expect(help.exitCode == 0)
     #expect(help.stdout.contains("add"))
     #expect(help.stdout.contains("install"))
+    #expect(help.stdout.contains("doctor"))
     #expect(help.stdout.contains("status"))
     #expect(help.stdout.contains("review"))
     #expect(!help.stdout.contains("experimental_install"))
@@ -591,6 +592,60 @@ struct CLISurfaceTests {
       environment: env)
     #expect(result.exitCode == 0)
     #expect(result.stdout.contains("No matching skills found"))
+  }
+
+  @Test func supportsEditableLocalInstallModeAndDoctor() throws {
+    let project = try cliTemporaryDirectory()
+    let home = try cliTemporaryDirectory()
+    let source = try cliTemporaryDirectory()
+    let skillDir = source.appendingPathComponent("skills/edit-cli")
+    try writeCLISkill(at: skillDir, name: "edit-cli")
+    let env = ["HOME": home.path]
+
+    var result = try runSkills(
+      ["add", source.path, "--skill", "edit-cli", "--mode", "edit"],
+      currentDirectory: project,
+      environment: env)
+    #expect(result.exitCode == 0)
+    #expect(result.stdout.contains("installed edit-cli"))
+
+    let installed = project.appendingPathComponent(".agents/skills/edit-cli")
+    #expect((try? installed.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true)
+    try "live".write(
+      to: skillDir.appendingPathComponent("live.md"), atomically: true, encoding: .utf8)
+    #expect(FileManager.default.fileExists(atPath: installed.appendingPathComponent("live.md").path))
+
+    result = try runSkills(["list", "--json"], currentDirectory: project, environment: env)
+    #expect(result.exitCode == 0)
+    #expect(result.stdout.contains("\"status\" : \"edit-linked\""))
+    #expect(result.stdout.contains("\"materialization\" : \"edit-installed\""))
+    #expect(result.stdout.contains("\"mode\" : \"edit\""))
+
+    result = try runSkills(["doctor", "--json"], currentDirectory: project, environment: env)
+    #expect(result.exitCode == 0)
+    #expect(result.stdout.contains("\"ok\" : true"))
+    #expect(result.stdout.contains("edit-linked"))
+
+    result = try runSkills(
+      ["add", "owner/repo", "--mode", "edit"],
+      currentDirectory: project,
+      environment: env)
+    #expect(result.exitCode != 0)
+    #expect(result.stderr.contains("--mode edit requires an unpinned local source"))
+
+    result = try runSkills(
+      ["add", source.path, "--mode", "edit", "--branch", "main"],
+      currentDirectory: project,
+      environment: env)
+    #expect(result.exitCode != 0)
+    #expect(result.stderr.contains("--mode edit requires an unpinned local source"))
+
+    result = try runSkills(
+      ["update", "missing-watch", "--from-watch", "--mode", "edit", "--apply"],
+      currentDirectory: project,
+      environment: env)
+    #expect(result.exitCode != 0)
+    #expect(result.stderr.contains("--mode edit cannot be used with update --from-watch"))
   }
 
   @Test func removesInstalledSkillsByNameAgentAndScope() throws {

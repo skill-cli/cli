@@ -15,6 +15,11 @@ struct InstalledJSON: Encodable {
   var agents: [String]
   var source: String?
   var installed: Bool
+  var status: String
+  var mode: String?
+  var materialization: String?
+  var sourcePath: String?
+  var linkTarget: String?
   var watchID: String?
   var reviewedCommit: String?
   var lastCheckedCommit: String?
@@ -28,7 +33,9 @@ func groupInstalledForJSON(_ installed: [InstalledSkill]) -> [InstalledJSON] {
       skill.scope.rawValue,
       skill.path,
       skill.sourceIdentity ?? "",
-      skill.isInstalled ? "installed" : "missing",
+      skill.status.rawValue,
+      cliModeName(skill.mode) ?? "",
+      skill.materialization?.rawValue ?? "",
       skill.watchID ?? "",
     ].joined(separator: "\u{1f}")
     var value =
@@ -40,6 +47,11 @@ func groupInstalledForJSON(_ installed: [InstalledSkill]) -> [InstalledJSON] {
         agents: [],
         source: skill.sourceIdentity,
         installed: skill.isInstalled,
+        status: skill.status.rawValue,
+        mode: cliModeName(skill.mode),
+        materialization: skill.materialization?.rawValue,
+        sourcePath: skill.sourcePath,
+        linkTarget: skill.linkTarget,
         watchID: skill.watchID,
         reviewedCommit: skill.reviewedCommit,
         lastCheckedCommit: skill.lastCheckedCommit
@@ -49,6 +61,19 @@ func groupInstalledForJSON(_ installed: [InstalledSkill]) -> [InstalledJSON] {
     grouped[key] = value
   }
   return grouped.values.sorted { ($0.name, $0.path) < ($1.name, $1.path) }
+}
+
+func cliModeName(_ mode: InstallMode?) -> String? {
+  switch mode {
+  case .symlink:
+    return "link"
+  case .copy:
+    return "copy"
+  case .edit:
+    return "edit"
+  case nil:
+    return nil
+  }
 }
 
 func cliScopeName(_ scope: InstallScope) -> String {

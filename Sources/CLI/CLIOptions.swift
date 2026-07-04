@@ -28,6 +28,7 @@ enum CLIScope: String, ExpressibleByArgument {
 enum CLIMode: String, ExpressibleByArgument {
   case link
   case copy
+  case edit
 
   var installMode: InstallMode {
     switch self {
@@ -35,6 +36,8 @@ enum CLIMode: String, ExpressibleByArgument {
       return .symlink
     case .copy:
       return .copy
+    case .edit:
+      return .edit
     }
   }
 }

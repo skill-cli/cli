@@ -71,6 +71,37 @@ public struct AddOutcome: Sendable {
   }
 }
 
+public enum ResolvedInstallSkipReason: String, Codable, Equatable, Sendable {
+  case sourceMissing = "source missing"
+  case skillFileMissing = "skill file missing"
+}
+
+public struct ResolvedInstallSkip: Codable, Equatable, Sendable {
+  public var skill: String
+  public var sourceIdentity: String
+  public var reason: ResolvedInstallSkipReason
+  public var path: String
+
+  public init(
+    skill: String, sourceIdentity: String, reason: ResolvedInstallSkipReason, path: String
+  ) {
+    self.skill = skill
+    self.sourceIdentity = sourceIdentity
+    self.reason = reason
+    self.path = path
+  }
+}
+
+public struct ResolvedInstallReport: Sendable {
+  public var installed: [InstallResult]
+  public var skipped: [ResolvedInstallSkip]
+
+  public init(installed: [InstallResult], skipped: [ResolvedInstallSkip] = []) {
+    self.installed = installed
+    self.skipped = skipped
+  }
+}
+
 public struct InstalledSkill: Codable, Equatable, Sendable {
   public var name: String
   public var agent: AgentID
@@ -78,13 +109,25 @@ public struct InstalledSkill: Codable, Equatable, Sendable {
   public var path: String
   public var sourceIdentity: String?
   public var isInstalled: Bool
+  public var status: InstalledSkillStatus
+  public var mode: InstallMode?
+  public var materialization: InstallMaterialization?
+  public var sourcePath: String?
+  public var linkTarget: String?
   public var watchID: String?
   public var reviewedCommit: String?
   public var lastCheckedCommit: String?
 
   public init(
     name: String, agent: AgentID, scope: InstallScope, path: String,
-    sourceIdentity: String? = nil, isInstalled: Bool = true, watchID: String? = nil,
+    sourceIdentity: String? = nil,
+    isInstalled: Bool = true,
+    status: InstalledSkillStatus? = nil,
+    mode: InstallMode? = nil,
+    materialization: InstallMaterialization? = nil,
+    sourcePath: String? = nil,
+    linkTarget: String? = nil,
+    watchID: String? = nil,
     reviewedCommit: String? = nil, lastCheckedCommit: String? = nil
   ) {
     self.name = name
@@ -93,9 +136,63 @@ public struct InstalledSkill: Codable, Equatable, Sendable {
     self.path = path
     self.sourceIdentity = sourceIdentity
     self.isInstalled = isInstalled
+    self.status = status ?? (isInstalled ? .installed : .missing)
+    self.mode = mode
+    self.materialization = materialization
+    self.sourcePath = sourcePath
+    self.linkTarget = linkTarget
     self.watchID = watchID
     self.reviewedCommit = reviewedCommit
     self.lastCheckedCommit = lastCheckedCommit
+  }
+}
+
+public enum InstalledSkillStatus: String, Codable, Equatable, Sendable {
+  case installed
+  case missing
+  case brokenLink = "broken-link"
+  case copyDrift = "copy-drift"
+  case sourceMissing = "source-missing"
+  case copyFallback = "copy-fallback"
+  case editLinked = "edit-linked"
+  case installedOnly = "installed-only"
+}
+
+public enum DoctorCheckStatus: String, Codable, Equatable, Sendable {
+  case ok
+  case warning
+  case error
+}
+
+public struct DoctorCheck: Codable, Equatable, Sendable {
+  public var id: String
+  public var status: DoctorCheckStatus
+  public var message: String
+  public var hint: String?
+  public var path: String?
+
+  public init(
+    id: String,
+    status: DoctorCheckStatus,
+    message: String,
+    hint: String? = nil,
+    path: String? = nil
+  ) {
+    self.id = id
+    self.status = status
+    self.message = message
+    self.hint = hint
+    self.path = path
+  }
+}
+
+public struct DoctorReport: Codable, Equatable, Sendable {
+  public var ok: Bool
+  public var checks: [DoctorCheck]
+
+  public init(checks: [DoctorCheck]) {
+    self.checks = checks
+    self.ok = !checks.contains { $0.status == .error }
   }
 }
 
@@ -122,6 +219,12 @@ public struct UpdateResult: Codable, Equatable, Sendable {
 
 public enum RuntimeService {
   public static func add(_ options: AddOptions) throws -> AddOutcome {
+    if options.mode == .edit, options.watch || options.watchOnly {
+      throw CoreError.invalidSource("--mode edit cannot be combined with --watch or --watch-only")
+    }
+    if options.mode == .edit {
+      try validateEditableInput(options)
+    }
     let source =
       options.watch || options.watchOnly
       ? try SourceResolver.resolve(
@@ -132,6 +235,9 @@ public enum RuntimeService {
         requirement: options.sourceRequirement,
         scope: options.scope,
         environment: options.environment)
+    if options.mode == .edit {
+      try validateEditableSource(source)
+    }
     let explicitPath = try options.path.map(PathSafety.sanitizeSubpath)
     if let explicitPath, let sourcePath = source.parsed.subpath, explicitPath != sourcePath {
       throw CoreError.invalidSource("conflicting source paths")
@@ -226,6 +332,15 @@ public enum RuntimeService {
     scope: InstallScope, agents: [AgentID], environment: RuntimeEnvironment
   ) throws -> [InstalledSkill] {
     let watchLedger = try? WatchLedgerStore.load(environment: environment)
+    var managedByPath: [String: InstalledSkill] = [:]
+    if let managed = try? listManaged(scope: scope, agents: agents, environment: environment) {
+      for skill in managed {
+        let key = "\(skill.agent.rawValue)\u{1f}\(URL(fileURLWithPath: skill.path).standardizedFileURL.path)"
+        if managedByPath[key] == nil {
+          managedByPath[key] = skill
+        }
+      }
+    }
     var installed: [InstalledSkill] = []
     var seenPaths = Set<String>()
     for agent in agents {
@@ -240,6 +355,10 @@ public enum RuntimeService {
         for entry in entries {
           let seenKey = "\(agent.rawValue)\u{1f}\(entry.standardizedFileURL.path)"
           guard seenPaths.insert(seenKey).inserted else { continue }
+          if let managed = managedByPath[seenKey] {
+            installed.append(managed)
+            continue
+          }
           let skillFile = entry.appendingPathComponent("SKILL.md")
           guard FileManager.default.fileExists(atPath: skillFile.path) else { continue }
           guard let skill = try Discovery.parseSkill(at: skillFile, includeInternal: true) else {
@@ -253,6 +372,7 @@ public enum RuntimeService {
               agent: agent,
               scope: scope,
               path: entry.path,
+              status: .installedOnly,
               watchID: correlation?.watchID,
               reviewedCommit: correlation?.reviewedCommit,
               lastCheckedCommit: correlation?.lastCheckedCommit
@@ -285,6 +405,13 @@ public enum RuntimeService {
             destination.standardizedFileURL.path,
           ].joined(separator: "\u{1f}")
           guard seen.insert(key).inserted else { continue }
+          let inspection = inspectInstallation(
+            source: source,
+            pinnedSkill: pinnedSkill,
+            installation: installation,
+            destination: destination,
+            environment: environment
+          )
           listed.append(
             InstalledSkill(
               name: pinnedSkill.name,
@@ -292,7 +419,12 @@ public enum RuntimeService {
               scope: installation.scope,
               path: destination.path,
               sourceIdentity: source.identity,
-              isInstalled: installedSkillExists(at: destination),
+              isInstalled: inspection.isInstalled,
+              status: inspection.status,
+              mode: installation.mode,
+              materialization: inspection.materialization,
+              sourcePath: inspection.sourcePath,
+              linkTarget: inspection.linkTarget,
               watchID: correlation?.watchID,
               reviewedCommit: correlation?.reviewedCommit,
               lastCheckedCommit: correlation?.lastCheckedCommit
@@ -304,6 +436,65 @@ public enum RuntimeService {
     return listed.sorted {
       ($0.agent.rawValue, $0.name, $0.path) < ($1.agent.rawValue, $1.name, $1.path)
     }
+  }
+
+  public static func doctor(
+    scope: InstallScope, agents: [AgentID], environment: RuntimeEnvironment
+  ) throws -> DoctorReport {
+    var checks: [DoctorCheck] = []
+    let lockURL = InstallLockStore.lockURL(scope: scope, environment: environment)
+    let lockExists = FileManager.default.fileExists(atPath: lockURL.path)
+    checks.append(
+      DoctorCheck(
+        id: "resolved-file",
+        status: lockExists ? .ok : .warning,
+        message: lockExists
+          ? "resolved state found for \(scope.rawValue) scope"
+          : "no resolved state found for \(scope.rawValue) scope",
+        hint: lockExists ? nil : "Run skill add <source> before restoring managed installs.",
+        path: lockURL.path
+      ))
+
+    let managed = try listManaged(scope: scope, agents: agents, environment: environment)
+    if managed.isEmpty {
+      checks.append(
+        DoctorCheck(
+          id: "managed-installs",
+          status: .warning,
+          message: "no managed skill installations found",
+          hint: "Use skill list --all to inspect unmanaged installed skills."))
+    }
+
+    for skill in managed {
+      let status = doctorStatus(for: skill.status)
+      checks.append(
+        DoctorCheck(
+          id: "skill.\(skill.agent.rawValue).\(PathSafety.sanitizeName(skill.name))",
+          status: status,
+          message: "\(skill.name) for \(skill.agent.rawValue): \(skill.status.rawValue)",
+          hint: doctorHint(for: skill.status),
+          path: skill.path
+        ))
+    }
+
+    let managedKeys = Set(
+      managed.map { "\($0.agent.rawValue)\u{1f}\(PathSafety.sanitizeName($0.name))" })
+    let installedOnly = try listInstalled(scope: scope, agents: agents, environment: environment)
+      .filter {
+        !managedKeys.contains("\($0.agent.rawValue)\u{1f}\(PathSafety.sanitizeName($0.name))")
+      }
+    for skill in installedOnly {
+      checks.append(
+        DoctorCheck(
+          id: "installed-only.\(skill.agent.rawValue).\(PathSafety.sanitizeName(skill.name))",
+          status: .warning,
+          message: "\(skill.name) for \(skill.agent.rawValue): installed-only",
+          hint: "This skill is present on disk but not tracked in resolved state.",
+          path: skill.path
+        ))
+    }
+
+    return DoctorReport(checks: checks)
   }
 
   public static func remove(
@@ -330,13 +521,36 @@ public enum RuntimeService {
   public static func installResolved(
     scope: InstallScope = .project, environment: RuntimeEnvironment
   ) throws -> [InstallResult] {
+    try installResolvedReport(scope: scope, environment: environment).installed
+  }
+
+  public static func installResolvedReport(
+    scope: InstallScope = .project, environment: RuntimeEnvironment
+  ) throws -> ResolvedInstallReport {
     let lock = try InstallLockStore.load(scope: scope, environment: environment)
     var results: [InstallResult] = []
+    var skipped: [ResolvedInstallSkip] = []
 
     for sourcePin in lock.pins {
       let source = try resolvedSource(from: sourcePin, scope: scope, environment: environment)
       for pinnedSkill in sourcePin.skills {
+        guard pinnedSkill.installations.contains(where: { $0.scope == scope }) else {
+          continue
+        }
         let skillFile = source.checkoutURL.appendingPathComponent(pinnedSkill.path)
+        guard FileManager.default.fileExists(atPath: skillFile.path) else {
+          let sourcePath = source.checkoutURL.path
+          let sourceMissing =
+            sourcePin.kind == "localFileSystem"
+            && !FileManager.default.fileExists(atPath: sourcePath)
+          skipped.append(
+            ResolvedInstallSkip(
+              skill: pinnedSkill.name,
+              sourceIdentity: sourcePin.identity,
+              reason: sourceMissing ? .sourceMissing : .skillFileMissing,
+              path: sourceMissing ? sourcePath : skillFile.path))
+          continue
+        }
         let parsedSkill = try Discovery.parseSkill(at: skillFile, includeInternal: true)
         let skill =
           parsedSkill
@@ -357,7 +571,7 @@ public enum RuntimeService {
       }
     }
 
-    return results
+    return ResolvedInstallReport(installed: results, skipped: skipped)
   }
 
   public static func updateInstalled(
@@ -400,8 +614,14 @@ public enum RuntimeService {
         let newHash = try FileHash.folderHash(URL(fileURLWithPath: skill.path))
         let changed = newHash != pinnedSkill.contentHash
         var installed: [InstallResult] = []
+        let needsEditRestore = editInstallationsNeedRestore(
+          source: sourcePin,
+          pinnedSkill: pinnedSkill,
+          scope: scope,
+          environment: environment
+        )
 
-        if changed, apply {
+        if apply, changed || needsEditRestore {
           installed.append(
             contentsOf: try installRestoredSkill(
               source: source,
@@ -436,6 +656,9 @@ public enum RuntimeService {
     environment: RuntimeEnvironment,
     apply: Bool
   ) throws -> [InstallResult] {
+    if mode == .edit {
+      throw CoreError.invalidSource("--mode edit cannot be used with update --from-watch")
+    }
     let record = try WatchService.record(matching: target, environment: environment)
     let packets = try WatchService.diff(
       watchID: record.watchID, path: path, all: all, environment: environment)
@@ -713,6 +936,306 @@ public enum RuntimeService {
       results.append(contentsOf: try Installer.install(request))
     }
     return results
+  }
+
+  private struct InstallationInspection {
+    var isInstalled: Bool
+    var status: InstalledSkillStatus
+    var materialization: InstallMaterialization?
+    var sourcePath: String?
+    var linkTarget: String?
+  }
+
+  private static func validateEditableSource(_ source: ResolvedSource) throws {
+    guard source.parsed.type == .local, source.parsed.requirement == nil, source.watchID == nil
+    else {
+      throw CoreError.invalidSource("--mode edit requires an unpinned local source")
+    }
+  }
+
+  private static func validateEditableInput(_ options: AddOptions) throws {
+    if options.sourceRequirement != nil {
+      throw CoreError.invalidSource("--mode edit requires an unpinned local source")
+    }
+    let parsed = try SourceParser.parse(
+      options.source, currentDirectory: options.environment.projectDirectory)
+    guard parsed.type == .local, parsed.requirement == nil else {
+      throw CoreError.invalidSource("--mode edit requires an unpinned local source")
+    }
+  }
+
+  private static func inspectInstallation(
+    source: SourcePin,
+    pinnedSkill: PinnedSkill,
+    installation: InstallationPin,
+    destination: URL,
+    environment: RuntimeEnvironment
+  ) -> InstallationInspection {
+    let sourcePath = sourceDirectoryPath(
+      source: source, pinnedSkill: pinnedSkill, installation: installation)
+    let linkTarget = resolvedSymlinkDestination(destination)?.path ?? installation.linkTarget
+    let materialization = installation.materialization ?? inferredMaterialization(
+      installation: installation, destination: destination)
+    let isInstalled = installedSkillExists(at: destination)
+    let status = installationStatus(
+      source: source,
+      pinnedSkill: pinnedSkill,
+      installation: installation,
+      destination: destination,
+      isInstalled: isInstalled,
+      materialization: materialization,
+      sourcePath: sourcePath,
+      linkTarget: linkTarget,
+      environment: environment
+    )
+    return InstallationInspection(
+      isInstalled: isInstalled,
+      status: status,
+      materialization: materialization,
+      sourcePath: sourcePath,
+      linkTarget: linkTarget
+    )
+  }
+
+  private static func inferredMaterialization(
+    installation: InstallationPin, destination: URL
+  ) -> InstallMaterialization? {
+    if installation.mode == .edit {
+      return .editInstalled
+    }
+    if installation.mode == .copy {
+      return .copyInstalled
+    }
+    if installation.fallback == true {
+      return .copyFallback
+    }
+    return pathIsSymlink(destination) ? .linkInstalled : .copyInstalled
+  }
+
+  private static func installationStatus(
+    source: SourcePin,
+    pinnedSkill: PinnedSkill,
+    installation: InstallationPin,
+    destination: URL,
+    isInstalled: Bool,
+    materialization: InstallMaterialization?,
+    sourcePath: String?,
+    linkTarget: String?,
+    environment: RuntimeEnvironment
+  ) -> InstalledSkillStatus {
+    if installation.mode == .edit {
+      guard let sourcePath,
+        FileManager.default.fileExists(atPath: URL(fileURLWithPath: sourcePath).path)
+      else {
+        return .sourceMissing
+      }
+      guard isInstalled else {
+        return pathIsSymlink(destination) ? .brokenLink : .missing
+      }
+      guard pathIsSymlink(destination) else {
+        return .copyDrift
+      }
+      if editLinkIsHealthy(
+        sourcePath: sourcePath,
+        linkTarget: linkTarget,
+        destination: destination,
+        installation: installation,
+        environment: environment
+      ) {
+        return .editLinked
+      }
+      return .brokenLink
+    }
+
+    guard isInstalled else {
+      return pathIsSymlink(destination) ? .brokenLink : .missing
+    }
+    if materialization == .copyFallback || installation.fallback == true {
+      return .copyFallback
+    }
+    if let sourcePath, !FileManager.default.fileExists(atPath: sourcePath) {
+      return .sourceMissing
+    }
+    if copyDrifted(
+      source: source,
+      pinnedSkill: pinnedSkill,
+      destination: destination,
+      sourcePath: sourcePath
+    ) {
+      return .copyDrift
+    }
+    return .installed
+  }
+
+  private static func copyDrifted(
+    source: SourcePin, pinnedSkill: PinnedSkill, destination: URL, sourcePath: String?
+  ) -> Bool {
+    if let sourcePath, FileManager.default.fileExists(atPath: sourcePath),
+      let hash = try? FileHash.folderHash(URL(fileURLWithPath: sourcePath)),
+      hash != pinnedSkill.contentHash
+    {
+      return true
+    }
+    if source.kind == "localFileSystem", sourcePath == nil,
+      let inferred = sourceDirectoryPath(
+        source: source, pinnedSkill: pinnedSkill, installation: nil),
+      FileManager.default.fileExists(atPath: inferred),
+      let hash = try? FileHash.folderHash(URL(fileURLWithPath: inferred)),
+      hash != pinnedSkill.contentHash
+    {
+      return true
+    }
+    if let installedHash = try? FileHash.folderHash(destination),
+      installedHash != pinnedSkill.contentHash
+    {
+      return true
+    }
+    return false
+  }
+
+  private static func editInstallationsNeedRestore(
+    source: SourcePin,
+    pinnedSkill: PinnedSkill,
+    scope: InstallScope,
+    environment: RuntimeEnvironment
+  ) -> Bool {
+    pinnedSkill.installations.contains { installation in
+      guard installation.scope == scope, installation.mode == .edit else {
+        return false
+      }
+      let destination = installationURL(for: installation, environment: environment)
+      let inspection = inspectInstallation(
+        source: source,
+        pinnedSkill: pinnedSkill,
+        installation: installation,
+        destination: destination,
+        environment: environment
+      )
+      return inspection.status != .editLinked
+    }
+  }
+
+  private static func editLinkIsHealthy(
+    sourcePath: String,
+    linkTarget: String?,
+    destination: URL,
+    installation: InstallationPin,
+    environment: RuntimeEnvironment
+  ) -> Bool {
+    let sourceURL = URL(fileURLWithPath: sourcePath)
+    guard let linkTarget else {
+      return false
+    }
+    let targetURL = URL(fileURLWithPath: linkTarget)
+    let canonical = AgentRegistry.canonicalSkillsDirectory(
+      scope: installation.scope, environment: environment
+    ).appendingPathComponent(destination.lastPathComponent)
+    if sameInstallLocation(destination, canonical) {
+      return sameResolvedLocation(targetURL, sourceURL)
+    }
+    return sameInstallLocation(targetURL, canonical)
+      && sameResolvedLocation(canonical, sourceURL)
+  }
+
+  private static func sourceDirectoryPath(
+    source: SourcePin, pinnedSkill: PinnedSkill, installation: InstallationPin?
+  ) -> String? {
+    if let sourcePath = installation?.sourcePath {
+      return sourcePath
+    }
+    guard source.kind == "localFileSystem" else {
+      return nil
+    }
+    let relativeSkillDirectory = skillDirectoryPath(from: pinnedSkill.path)
+    return URL(fileURLWithPath: source.location)
+      .appendingPathComponent(relativeSkillDirectory)
+      .standardizedFileURL
+      .path
+  }
+
+  private static func pathIsSymlink(_ path: URL) -> Bool {
+    (try? path.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+  }
+
+  private static func resolvedSymlinkDestination(_ path: URL) -> URL? {
+    guard pathIsSymlink(path),
+      let target = try? FileManager.default.destinationOfSymbolicLink(atPath: path.path)
+    else {
+      return nil
+    }
+    let rawPath =
+      target.hasPrefix("/")
+      ? target
+      : path.deletingLastPathComponent().path + "/" + target
+    return URL(fileURLWithPath: lexicalStandardizedPath(rawPath))
+  }
+
+  private static func sameResolvedLocation(_ lhs: URL, _ rhs: URL) -> Bool {
+    lhs.resolvingSymlinksInPath().standardizedFileURL.path
+      == rhs.resolvingSymlinksInPath().standardizedFileURL.path
+  }
+
+  private static func sameInstallLocation(_ lhs: URL, _ rhs: URL) -> Bool {
+    normalizedInstallLocation(lhs) == normalizedInstallLocation(rhs)
+  }
+
+  private static func normalizedInstallLocation(_ url: URL) -> String {
+    let parent = url.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path
+    return lexicalStandardizedPath(parent + "/" + url.lastPathComponent)
+  }
+
+  private static func lexicalStandardizedPath(_ path: String) -> String {
+    let isAbsolute = path.hasPrefix("/")
+    var components: [String] = []
+    for component in path.split(separator: "/", omittingEmptySubsequences: true) {
+      switch component {
+      case ".":
+        continue
+      case "..":
+        if let last = components.last, last != ".." {
+          components.removeLast()
+        } else if !isAbsolute {
+          components.append("..")
+        }
+      default:
+        components.append(String(component))
+      }
+    }
+    let normalized = components.joined(separator: "/")
+    if isAbsolute {
+      return "/" + normalized
+    }
+    return normalized.isEmpty ? "." : normalized
+  }
+
+  private static func doctorStatus(for status: InstalledSkillStatus) -> DoctorCheckStatus {
+    switch status {
+    case .installed, .editLinked:
+      return .ok
+    case .copyFallback, .copyDrift, .installedOnly:
+      return .warning
+    case .missing, .brokenLink, .sourceMissing:
+      return .error
+    }
+  }
+
+  private static func doctorHint(for status: InstalledSkillStatus) -> String? {
+    switch status {
+    case .installed, .editLinked:
+      return nil
+    case .missing:
+      return "Run skill install to restore from resolved state."
+    case .brokenLink:
+      return "Re-run skill add or skill install to recreate the link."
+    case .copyDrift:
+      return "Run skill update --apply to refresh the installed copy."
+    case .sourceMissing:
+      return "Restore the local source path or remove the resolved entry."
+    case .copyFallback:
+      return "The requested link install fell back to a copy; reinstall on a filesystem that supports symlinks if live linking is required."
+    case .installedOnly:
+      return "Use skill add to manage this skill or remove it manually if it is stale."
+    }
   }
 
   private static func installedSkillExists(at directory: URL) -> Bool {

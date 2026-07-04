@@ -76,12 +76,29 @@ public struct InstallationPin: Codable, Equatable, Sendable {
   public var agent: AgentID
   public var mode: InstallMode
   public var path: String
+  public var materialization: InstallMaterialization?
+  public var sourcePath: String?
+  public var linkTarget: String?
+  public var fallback: Bool?
 
-  public init(scope: InstallScope, agent: AgentID, mode: InstallMode, path: String) {
+  public init(
+    scope: InstallScope,
+    agent: AgentID,
+    mode: InstallMode,
+    path: String,
+    materialization: InstallMaterialization? = nil,
+    sourcePath: String? = nil,
+    linkTarget: String? = nil,
+    fallback: Bool? = nil
+  ) {
     self.scope = scope
     self.agent = agent
     self.mode = mode
     self.path = path
+    self.materialization = materialization
+    self.sourcePath = sourcePath
+    self.linkTarget = linkTarget
+    self.fallback = fallback
   }
 }
 

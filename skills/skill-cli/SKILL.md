@@ -17,7 +17,6 @@ lists, updates, removes, watches, and reviews skill sources.
 ## Operating Rules
 
 - Use `skill` commands for skill lifecycle operations.
-- Do not run legacy installer helper scripts.
 - Do not write directly to an agent-specific skills directory.
 - Prefer user scope when the user asks for personal or agent-wide skills.
 - Use project scope when the user asks for repo-local or workspace-local skills.
@@ -35,6 +34,7 @@ Before changing skill state, check that the CLI is available:
 ```bash
 skill --version
 skill --help
+skill doctor --json
 ```
 
 If `skill` is missing, ask the user to install it first:
@@ -153,6 +153,19 @@ Install from a local checkout:
 skill add <path> --path <path/to/skill-or-container> --scope user --agent codex --skill <skill-name>
 ```
 
+Use editable local install mode only when developing a skill from a local
+source checkout:
+
+```bash
+skill add <path> --path <path/to/skill-or-container> --scope user --agent codex --skill <skill-name> --mode edit
+```
+
+`--mode edit` creates a live canonical symlink to the local source skill
+directory, with agent projections linked through that canonical entry. It is not
+valid for remote sources, pinned source requirements, or watch installs. For
+normal published or fixed installs, use the default `link` mode or explicit
+`--mode copy`.
+
 Install all skills in a source or container only when requested:
 
 ```bash
@@ -169,6 +182,17 @@ skill install --scope user
 
 This is the equivalent of materializing the selected scope's resolved skill
 state into canonical skill directories and agent projections.
+
+## Doctor
+
+Diagnose install health before hand-editing anything:
+
+```bash
+skill doctor --scope user --agent codex --json
+```
+
+Use doctor output to identify missing installs, broken links, missing local
+sources, copy drift, fallback copies, and unmanaged installed-only skills.
 
 ## Update
 

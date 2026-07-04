@@ -25,6 +25,8 @@ swift run skill --help
 swift run skill list
 swift run skill list --all
 swift run skill add <source> --mode copy
+swift run skill add <local-source> --mode edit
+swift run skill doctor --json
 swift run skill install
 ```
 
@@ -63,6 +65,7 @@ skill add <source> --agent codex --skill my-skill
 skill add larksuite/cli@branch:main@skill:lark-base --watch --scope user
 skill list --agent codex --json
 skill list --all --scope user
+skill doctor --scope user --json
 skill update my-skill --apply
 skill remove my-skill --agent codex
 ```
@@ -84,6 +87,21 @@ installs materialize canonical installed copies under `~/.agents/skills`. Agents
 whose configured project skill directory is `.agents/skills` use the canonical
 user directory directly; native-only agents receive projections into their own
 skill directories.
+
+Install modes:
+
+- `--mode link` is the default managed install: skill-cli owns canonical copies
+  and agent projections.
+- `--mode copy` writes physical copies to the selected install surfaces.
+- `--mode edit` is for local development only: the canonical installed skill
+  entry is a live symlink to the local source skill directory, and agent
+  projections link through that canonical entry. It requires an unpinned local
+  source and is rejected for remote sources, source requirements, and watch
+  installs.
+
+`skill doctor` diagnoses resolved state, missing installs, broken links,
+copy drift, source-missing edit installs, fallback copies, and unmanaged
+installed-only skills without mutating skill state.
 
 Supported source shapes include local paths, GitHub/GitLab URLs and shorthand,
 direct git URLs, and well-known skill discovery. Well-known discovery supports
@@ -109,7 +127,7 @@ skill add skill-cli/cli@branch:master --path skills/skill-cli --scope user --age
 From a source checkout, install the local version for development:
 
 ```bash
-skill add . --path skills/skill-cli --scope user --agent codex
+skill add . --path skills/skill-cli --scope user --agent codex --mode edit
 ```
 
 ## Watch Sources
