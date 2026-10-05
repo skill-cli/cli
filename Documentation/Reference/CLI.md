@@ -50,6 +50,7 @@ Canonical requirement flags follow SwiftPM-style spelling:
 skill add owner/repo --branch main
 skill add owner/repo --revision abc123
 skill add owner/repo --exact 1.2.3
+skill add owner/repo --exact 1.2.3-beta.4
 skill add owner/repo --from 1.2.0
 skill add owner/repo --up-to-next-minor-from 1.2.0
 skill add owner/repo --from 1.2.0 --to 2.0.0
@@ -66,6 +67,8 @@ skill add larksuite/cli@revision:abc123@path:skills/lark-base
 
 Rules:
 
+- exact versions retain prerelease and build identifiers; an optional `v` tag
+  prefix is accepted, and ranges use SemVer precedence
 - known requirement labels are `branch`, `revision`, `exact`, `from`,
   `minor`, and `ref`
 - known selector labels are `path` and `skill`
@@ -154,6 +157,10 @@ managed installation still exists on disk. Status values include `installed`,
 `edit-linked`, and `installed-only`. `skill list --all` scans agent skill
 directories and includes unmanaged skills that are not tracked by resolved
 state.
+
+`skill remove` accepts managed names from resolved state even when their
+installation files or local source are missing. It removes the selected
+installation records as well as any remaining installed files.
 
 Diagnose install state without mutating files:
 

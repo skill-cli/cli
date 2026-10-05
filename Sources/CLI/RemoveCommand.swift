@@ -35,9 +35,9 @@ struct Remove: ParsableCommand {
     }
     let agents = try parseAgents(agentValues, all: agentValues.isEmpty)
     let environment = RuntimeEnvironment()
-    let installed = try RuntimeService.listInstalled(
+    let available = try RuntimeService.removableSkillNames(
       scope: scope.installScope, agents: agents, environment: environment)
-    if installed.isEmpty {
+    if available.isEmpty {
       print("No skills found to remove")
       return
     }
@@ -45,7 +45,6 @@ struct Remove: ParsableCommand {
       throw ValidationError("pass one or more skills, --skill, or --all")
     }
     if !all {
-      let available = Set(installed.map { PathSafety.sanitizeName($0.name) })
       let missing = names.filter { !available.contains(PathSafety.sanitizeName($0)) }
       if !missing.isEmpty {
         print("No matching skills found")

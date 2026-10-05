@@ -202,7 +202,11 @@ public enum Git {
       return (requirement.value, nil)
     case "exact":
       let version = try parsedVersion(requirement.value, label: "exact")
-      guard let match = tags(in: checkout).first(where: { $0.version == version }) else {
+      guard
+        let match = tags(in: checkout).first(where: {
+          $0.version.description == version.description
+        })
+      else {
         throw CoreError.notFound("tag for exact version \(requirement.value)")
       }
       return (match.tag, match.version.description)

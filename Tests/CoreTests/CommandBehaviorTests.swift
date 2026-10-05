@@ -139,6 +139,46 @@ struct RuntimeServiceWorkflowTests {
     _ = skillDir
   }
 
+  @Test(arguments: [InstallMode.copy, .edit])
+  func removesManagedRecordsWithMissingInstallationsOrSources(_ mode: InstallMode) throws {
+    let project = try commandBehaviorTemporaryDirectory()
+    let home = try commandBehaviorTemporaryDirectory()
+    let sourceRoot = try commandBehaviorTemporaryDirectory()
+    _ = try writeCommandBehaviorSkill(root: sourceRoot, path: "skills/gone", name: "gone")
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: home, environment: [:])
+    _ = try RuntimeService.add(
+      AddOptions(
+        source: sourceRoot.path,
+        agents: [.codex],
+        skillNames: ["gone"],
+        scope: .project,
+        mode: mode,
+        environment: environment))
+    try FileManager.default.removeItem(at: sourceRoot)
+    try FileManager.default.removeItem(at: project.appendingPathComponent(".agents/skills/gone"))
+
+    #expect(
+      try RuntimeService.listInstalled(scope: .project, agents: [.codex], environment: environment)
+        .isEmpty)
+    let report = try RuntimeService.doctor(
+      scope: .project, agents: [.codex], environment: environment)
+    #expect(!report.ok)
+    if mode == .edit {
+      #expect(report.checks.contains { $0.message.contains("source-missing") })
+    }
+    #expect(
+      try RuntimeService.removableSkillNames(
+        scope: .project, agents: [.codex], environment: environment
+      ).contains("gone"))
+
+    _ = try RuntimeService.remove(
+      skillNames: ["gone"], scope: .project, agents: [.codex], environment: environment)
+    #expect(try InstallLockStore.load(scope: .project, environment: environment).pins.isEmpty)
+    #expect(
+      try RuntimeService.doctor(scope: .project, agents: [.codex], environment: environment).ok)
+  }
+
   @Test func installsWatchedSkillFromReviewedBaselineAndKeepsDryRunReadOnly() throws {
     let project = try commandBehaviorTemporaryDirectory()
     let home = try commandBehaviorTemporaryDirectory()
