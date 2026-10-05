@@ -501,8 +501,8 @@ public enum RuntimeService {
     skillNames: [String], scope: InstallScope, agents: [AgentID], environment: RuntimeEnvironment
   ) throws -> [String] {
     if !skillNames.isEmpty {
-      let installed = try listInstalled(scope: scope, agents: agents, environment: environment)
-      let available = Set(installed.map { PathSafety.sanitizeName($0.name) })
+      let available = try removableSkillNames(
+        scope: scope, agents: agents, environment: environment)
       let missing = skillNames.filter { !available.contains(PathSafety.sanitizeName($0)) }
       if let first = missing.first {
         throw CoreError.notFound("skill '\(first)'")
@@ -510,6 +510,14 @@ public enum RuntimeService {
     }
     return try Installer.remove(
       skillNames: skillNames, agents: agents, scope: scope, environment: environment)
+  }
+
+  public static func removableSkillNames(
+    scope: InstallScope, agents: [AgentID], environment: RuntimeEnvironment
+  ) throws -> Set<String> {
+    let onDisk = try listInstalled(scope: scope, agents: agents, environment: environment)
+    let managed = try listManaged(scope: scope, agents: agents, environment: environment)
+    return Set((onDisk + managed).map { PathSafety.sanitizeName($0.name) })
   }
 
   public static func installProjectResolved(environment: RuntimeEnvironment) throws

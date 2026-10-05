@@ -3,6 +3,42 @@ import Testing
 
 @Suite("CLI Surface")
 struct CLISurfaceTests {
+  @Test(arguments: [false, true])
+  func removesMissingManagedSkillsByNameOrAll(_ all: Bool) throws {
+    let project = try cliTemporaryDirectory()
+    let home = try cliTemporaryDirectory()
+    let source = try cliTemporaryDirectory()
+    let skillDir = source.appendingPathComponent("skills/gone")
+    try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
+    try """
+    ---
+    name: gone
+    description: Removable skill
+    ---
+    """.write(to: skillDir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+    let add = try runSkills(
+      ["add", source.path, "--mode", "edit", "--agent", "codex"],
+      currentDirectory: project, environment: ["HOME": home.path])
+    #expect(add.exitCode == 0)
+    try FileManager.default.removeItem(at: source)
+    try FileManager.default.removeItem(at: project.appendingPathComponent(".agents/skills/gone"))
+
+    let before = try runSkills(
+      ["doctor", "--agent", "codex", "--json"],
+      currentDirectory: project, environment: ["HOME": home.path])
+    #expect(before.stdout.contains("source-missing"))
+    let remove = try runSkills(
+      ["remove", all ? "--all" : "gone", "--agent", "codex"],
+      currentDirectory: project, environment: ["HOME": home.path])
+    #expect(remove.exitCode == 0)
+    #expect(!remove.stdout.contains("No skills found"))
+    #expect(!remove.stdout.contains("No matching skills"))
+    let after = try runSkills(
+      ["doctor", "--agent", "codex", "--json"],
+      currentDirectory: project, environment: ["HOME": home.path])
+    #expect(!after.stdout.contains("source-missing"))
+  }
+
   @Test func exposesCurrentCommandFamilies() throws {
     let help = try runSkills(["--help"])
     #expect(help.exitCode == 0)
