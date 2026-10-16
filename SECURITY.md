@@ -1,12 +1,10 @@
 # Security
 
-Security-sensitive issues should be reported privately when possible.
+Report security-sensitive issues privately, never in a public issue.
 
 ## Reporting
 
-If GitHub private security advisories are available for this repository, use
-that channel. Otherwise, contact the maintainer before opening a public issue
-with exploit details.
+Use [GitHub private vulnerability reporting](https://github.com/skill-cli/cli/security/advisories/new).
 
 Include:
 
