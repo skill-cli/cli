@@ -142,6 +142,7 @@ public enum InstallLockStore {
       {
         return legacy.toLockFile()
       }
+      throw CoreError.invalidState("resolved file \(url.path) could not be decoded")
     }
 
     return LockFile()

@@ -5,6 +5,75 @@ import Testing
 
 @Suite("Install Lock")
 struct InstallLockTests {
+  @Test(arguments: [
+    "{", #"{"version":1}"#, #"{"version":0,"pins":[]}"#,
+    """
+    {
+      "version": 1,
+      "pins": [
+    <<<<<<< HEAD
+      ]
+    }
+    """,
+  ])
+  func rejectsUndecodableCurrentResolvedFile(_ contents: String) throws {
+    let project = try lockTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: project) }
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: project, environment: [:])
+    let url = InstallLockStore.projectResolvedURL(environment: environment)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(contents.utf8).write(to: url)
+
+    #expect {
+      try InstallLockStore.load(scope: .project, environment: environment)
+    } throws: { error in
+      error is CoreError && String(describing: error).contains(url.path)
+        && String(describing: error).hasPrefix("Invalid state: ")
+        && String(describing: error).contains("could not be decoded")
+    }
+    #expect(try Data(contentsOf: url) == Data(contents.utf8))
+  }
+
+  @Test(arguments: ["{", #"{"version":1}"#, #"{"version":0,"skills":{}}"#])
+  func rejectsUndecodableLegacyFile(_ contents: String) throws {
+    let project = try lockTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: project) }
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: project, environment: [:])
+    let url = project.appendingPathComponent(".agent/skills-lock.json")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(contents.utf8).write(to: url)
+
+    #expect {
+      try InstallLockStore.load(scope: .project, environment: environment)
+    } throws: { error in
+      error is CoreError && String(describing: error).contains(url.path)
+        && String(describing: error).hasPrefix("Invalid state: ")
+        && String(describing: error).contains("could not be decoded")
+    }
+  }
+
+  @Test func rejectsMalformedCurrentFileInsteadOfFallingBackToLegacy() throws {
+    let project = try lockTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: project) }
+    let environment = RuntimeEnvironment(
+      projectDirectory: project, homeDirectory: project, environment: [:])
+    let url = InstallLockStore.projectResolvedURL(environment: environment)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(#"{"version":1,"skills":{}}"#.utf8).write(
+      to: project.appendingPathComponent(".agent/skills-lock.json"))
+    #expect(try InstallLockStore.load(scope: .project, environment: environment) == LockFile())
+    try Data("{broken".utf8).write(to: url)
+
+    #expect(throws: CoreError.self) {
+      try InstallLockStore.load(scope: .project, environment: environment)
+    }
+  }
+
   @Test func savesLocksDeterministicallyWithTrailingNewline() throws {
     let project = try lockTemporaryDirectory()
     let home = try lockTemporaryDirectory()

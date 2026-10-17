@@ -5,6 +5,183 @@ import Testing
 
 @Suite("Runtime Service Workflows")
 struct RuntimeServiceWorkflowTests {
+  @Test(arguments: ["add", "watch", "watch-only"], [InstallScope.project, .global])
+  func rejectsAddBeforeResolvingSource(_ command: String, scope: InstallScope) throws {
+    let root = try commandBehaviorTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let environment = RuntimeEnvironment(
+      projectDirectory: root, homeDirectory: root.appendingPathComponent("home"), environment: [:])
+    let url = InstallLockStore.lockURL(scope: scope, environment: environment)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let malformed = Data("{broken".utf8)
+    try malformed.write(to: url)
+
+    #expect(throws: CoreError.invalidState("resolved file \(url.path) could not be decoded")) {
+      try RuntimeService.add(
+        AddOptions(
+          source: root.appendingPathComponent("missing-source").path, scope: scope,
+          watch: command == "watch", watchOnly: command == "watch-only", environment: environment))
+    }
+    #expect(try Data(contentsOf: url) == malformed)
+    #expect(
+      !FileManager.default.fileExists(
+        atPath: WatchLedgerStore.ledgerURL(environment: environment).path))
+  }
+
+  @Test(arguments: [InstallMode.copy, .symlink, .edit], [InstallScope.project, .global])
+  func rejectsAddBeforeCreatingInstallDirectories(_ mode: InstallMode, scope: InstallScope) throws {
+    let root = try commandBehaviorTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("source")
+    try writeCommandBehaviorSkill(root: source, path: "two", name: "two")
+    let environment = RuntimeEnvironment(
+      projectDirectory: root, homeDirectory: root.appendingPathComponent("home"), environment: [:])
+    let url = InstallLockStore.lockURL(scope: scope, environment: environment)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let malformed = Data("{broken\n".utf8)
+    try malformed.write(to: url)
+
+    #expect(throws: CoreError.self) {
+      try RuntimeService.add(
+        AddOptions(
+          source: source.path, agents: [.codex, .claudeCode], scope: scope, mode: mode,
+          environment: environment))
+    }
+    #expect(try Data(contentsOf: url) == malformed)
+    for agent in [AgentID.codex, .claudeCode] {
+      let directory = AgentRegistry.installSkillsDirectory(
+        for: agent, scope: scope, environment: environment)
+      #expect(!FileManager.default.fileExists(atPath: directory.path))
+    }
+  }
+
+  @Test(arguments: [
+    "add", "install", "update", "remove-all", "remove-named", "watch",
+    "update-watch-inferred", "update-watch-explicit",
+  ])
+  func rejectsMutationsBeforeChangingInstalledFiles(_ command: String) throws {
+    let root = try commandBehaviorTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("source")
+    let sourceSkill = try writeCommandBehaviorSkill(root: source, path: "one", name: "one")
+    let environment = RuntimeEnvironment(
+      projectDirectory: root, homeDirectory: root.appendingPathComponent("home"), environment: [:])
+    let outcome = try RuntimeService.add(
+      AddOptions(
+        source: source.path, agents: [.codex, .claudeCode], mode: .copy, watch: true,
+        environment: environment))
+    let installedFiles = outcome.installed.map {
+      URL(fileURLWithPath: $0.path).appendingPathComponent("SKILL.md")
+    }
+    let originalFiles = try installedFiles.map { try Data(contentsOf: $0) }
+    try Data("changed source".utf8).write(to: sourceSkill.appendingPathComponent("extra.txt"))
+    try writeCommandBehaviorSkill(root: source, path: "two", name: "two")
+    let url = InstallLockStore.projectResolvedURL(environment: environment)
+    var malformed = try Data(contentsOf: url)
+    malformed.append(Data(",".utf8))
+    try malformed.write(to: url)
+
+    #expect(throws: CoreError.invalidState("resolved file \(url.path) could not be decoded")) {
+      switch command {
+      case "add", "watch":
+        _ = try RuntimeService.add(
+          AddOptions(
+            source: source.path, agents: [.codex, .claudeCode], mode: .copy, all: true,
+            watch: command == "watch", environment: environment))
+      case "install":
+        _ = try RuntimeService.installResolved(environment: environment)
+      case "update":
+        _ = try RuntimeService.updateInstalled(
+          scope: .project, environment: environment, apply: true)
+      case "remove-all", "remove-named":
+        _ = try RuntimeService.remove(
+          skillNames: command == "remove-named" ? ["one"] : [], scope: .project,
+          agents: [.codex, .claudeCode], environment: environment)
+      default:
+        _ = try RuntimeService.updateFromWatch(
+          outcome.watched[0].watchID, all: true,
+          agents: command == "update-watch-explicit" ? [.codex, .claudeCode] : nil,
+          environment: environment, apply: true)
+      }
+    }
+    #expect(try Data(contentsOf: url) == malformed)
+    for (file, original) in zip(installedFiles, originalFiles) {
+      #expect(try Data(contentsOf: file) == original)
+      #expect(
+        !FileManager.default.fileExists(
+          atPath: file.deletingLastPathComponent().appendingPathComponent("extra.txt").path))
+      #expect(
+        !FileManager.default.fileExists(
+          atPath: file.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("two").path))
+    }
+  }
+
+  @Test(arguments: [InstallScope.project, .global])
+  func watchedUpdateRejectsMalformedStateBeforeInstallingInEitherScope(
+    _ malformedScope: InstallScope
+  ) throws {
+    let root = try commandBehaviorTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("source")
+    let sourceSkill = try writeCommandBehaviorSkill(root: source, path: "one", name: "one")
+    let environment = RuntimeEnvironment(
+      projectDirectory: root, homeDirectory: root.appendingPathComponent("home"), environment: [:])
+    var installed: [InstallResult] = []
+    var watchID = ""
+    let scopes = [InstallScope.project, .global]
+    for scope in scopes {
+      let outcome = try RuntimeService.add(
+        AddOptions(
+          source: source.path, scope: scope, mode: .copy, watch: true, environment: environment))
+      installed += outcome.installed
+      watchID = try #require(outcome.watched.first?.watchID)
+    }
+    let lockURLs = scopes.map { InstallLockStore.lockURL(scope: $0, environment: environment) }
+    let malformedURL = InstallLockStore.lockURL(scope: malformedScope, environment: environment)
+    try Data("{broken".utf8).write(to: malformedURL)
+    let originalLocks = try lockURLs.map { try Data(contentsOf: $0) }
+    try Data("changed source".utf8).write(to: sourceSkill.appendingPathComponent("extra.txt"))
+
+    #expect(throws: CoreError.self) {
+      try RuntimeService.updateFromWatch(
+        watchID, all: true, environment: environment, apply: true)
+    }
+    for (url, original) in zip(lockURLs, originalLocks) {
+      #expect(try Data(contentsOf: url) == original)
+    }
+    for result in installed {
+      #expect(
+        !FileManager.default.fileExists(
+          atPath: URL(fileURLWithPath: result.path).appendingPathComponent("extra.txt").path))
+    }
+  }
+
+  @Test(arguments: ["skills.resolved", "skills-lock.json"])
+  func doctorReportsUndecodableResolvedState(_ filename: String) throws {
+    let root = try commandBehaviorTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let environment = RuntimeEnvironment(
+      projectDirectory: root, homeDirectory: root, environment: [:])
+    let url = root.appendingPathComponent(".agent/\(filename)")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("{broken".utf8).write(to: url)
+
+    let report = try RuntimeService.doctor(
+      scope: .project, agents: [.codex], environment: environment)
+    #expect(!report.ok)
+    let check = try #require(report.checks.first { $0.id == "resolved-file" })
+    #expect(check.status == .error)
+    #expect(check.message.contains(url.path))
+    #expect(check.message.contains("could not be decoded"))
+    #expect(check.path == (filename == "skills.resolved" ? url.path : nil))
+    #expect(check.hint == "Repair or restore the resolved file before managing installed skills.")
+    #expect(report.checks.count == 1)
+  }
+
   @Test func installsAllSkillsAndPreservesLockSourceIdentity() throws {
     let project = try commandBehaviorTemporaryDirectory()
     let home = try commandBehaviorTemporaryDirectory()

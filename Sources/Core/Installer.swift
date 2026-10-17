@@ -145,6 +145,8 @@ public enum Installer {
         throw CoreError.invalidSource("--mode edit requires an unpinned local source")
       }
     }
+    // Validate resolved state before changing any installed files.
+    _ = try InstallLockStore.load(scope: request.scope, environment: request.environment)
     var results: [InstallResult] = []
     for skill in request.skills {
       let installName = PathSafety.sanitizeName(skill.name)

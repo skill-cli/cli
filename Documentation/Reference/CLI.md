@@ -138,6 +138,9 @@ resolved state is recorded in `.agent/skills.resolved`.
 User resolved state is recorded at `$XDG_STATE_HOME/skills/skills.resolved` when
 `XDG_STATE_HOME` is set, otherwise `$HOME/.agents/skills.resolved`.
 
+Commands refuse to read or modify resolved state they cannot decode;
+`skill doctor` reports the error with a hint to repair or restore the file.
+
 Project source checkouts are cached under `.agent/cache`. User source checkouts
 are cached under `$XDG_CACHE_HOME/skill-cli` when `XDG_CACHE_HOME` is set,
 otherwise `$HOME/Library/Caches/skill-cli` on macOS or `$HOME/.cache/skill-cli`

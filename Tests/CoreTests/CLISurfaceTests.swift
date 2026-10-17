@@ -3,6 +3,163 @@ import Testing
 
 @Suite("CLI Surface")
 struct CLISurfaceTests {
+  @Test(arguments: [false, true])
+  func watchOnlyAddRejectsUndecodableProjectStateBeforeWriting(_ sourceIsProject: Bool) throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = sourceIsProject ? root : root.appendingPathComponent("source")
+    try writeCLISkill(at: source.appendingPathComponent("skills/demo"), name: "demo")
+    let installed = root.appendingPathComponent(".agents/skills/installed")
+    try writeCLISkill(at: installed, name: "installed")
+    let installedFile = installed.appendingPathComponent("SKILL.md")
+    let originalInstalled = try Data(contentsOf: installedFile)
+    let url = root.appendingPathComponent(".agent/skills.resolved")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let malformed = Data("{broken".utf8)
+    try malformed.write(to: url)
+
+    let result = try runSkills(
+      ["add", sourceIsProject ? "." : source.path, "--watch-only", "--all"],
+      currentDirectory: root,
+      environment: isolatedCLIEnvironment(home: root.appendingPathComponent("home")))
+    #expect(result.exitCode != 0)
+    #expect(result.stderr.contains("Invalid state: "))
+    #expect(result.stderr.contains(url.path))
+    #expect(result.stderr.contains("could not be decoded"))
+    #expect(try Data(contentsOf: url) == malformed)
+    #expect(try Data(contentsOf: installedFile) == originalInstalled)
+    #expect(
+      !FileManager.default.fileExists(
+        atPath: root.appendingPathComponent(".agents/skills/demo").path))
+    #expect(
+      !FileManager.default.fileExists(
+        atPath: root.appendingPathComponent(".agent/skills-state.json").path))
+  }
+
+  @Test(arguments: ["add", "list"])
+  func sourceCommandsIgnoreUndecodableSourceResolvedHint(_ command: String) throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let project = root.appendingPathComponent("project")
+    let source = root.appendingPathComponent("source")
+    let sourceSkill = source.appendingPathComponent("skills/demo")
+    try writeCLISkill(at: sourceSkill, name: "demo")
+    let sourceResolved = source.appendingPathComponent(".agent/skills.resolved")
+    let projectResolved = project.appendingPathComponent(".agent/skills.resolved")
+    for url in [sourceResolved, projectResolved] {
+      try FileManager.default.createDirectory(
+        at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    }
+    let malformed = Data("{\n<<<<<<< HEAD\n}".utf8)
+    let valid = Data(#"{"version":1,"pins":[]}"#.utf8)
+    try malformed.write(to: sourceResolved)
+    try valid.write(to: projectResolved)
+    let arguments =
+      command == "add"
+      ? ["add", source.path, "--skill", "demo", "--mode", "copy"] : ["list", source.path]
+
+    let result = try runSkills(
+      arguments, currentDirectory: project,
+      environment: isolatedCLIEnvironment(home: root.appendingPathComponent("home")))
+    #expect(result.exitCode == 0)
+    #expect(result.stdout.contains("demo"))
+    #expect(try Data(contentsOf: sourceResolved) == malformed)
+    if command == "add" {
+      let installedFile = project.appendingPathComponent(".agents/skills/demo/SKILL.md")
+      #expect(
+        try Data(contentsOf: installedFile)
+          == Data(contentsOf: sourceSkill.appendingPathComponent("SKILL.md")))
+    } else {
+      #expect(try Data(contentsOf: projectResolved) == valid)
+      #expect(
+        !FileManager.default.fileExists(atPath: project.appendingPathComponent(".agents").path))
+    }
+  }
+
+  @Test func listSourceIgnoresUndecodableProjectState() throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("source")
+    try writeCLISkill(at: source.appendingPathComponent("skills/demo"), name: "demo")
+    let url = root.appendingPathComponent(".agent/skills.resolved")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let malformed = Data("{broken".utf8)
+    try malformed.write(to: url)
+
+    let result = try runSkills(
+      ["list", source.path], currentDirectory: root,
+      environment: isolatedCLIEnvironment(home: root.appendingPathComponent("home")))
+    #expect(result.exitCode == 0)
+    #expect(result.stdout.contains("demo"))
+    #expect(try Data(contentsOf: url) == malformed)
+    #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(".agents").path))
+  }
+
+  @Test func addRejectsUndecodableResolvedFileWithoutInstalling() throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("source")
+    try writeCLISkill(at: source.appendingPathComponent("two"), name: "two")
+    let url = root.appendingPathComponent(".agent/skills.resolved")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let malformed = Data("{broken\n".utf8)
+    try malformed.write(to: url)
+
+    let result = try runSkills(
+      ["add", source.path, "--skill", "two", "--mode", "copy"],
+      currentDirectory: root,
+      environment: isolatedCLIEnvironment(home: root.appendingPathComponent("home")))
+    #expect(result.exitCode != 0)
+    #expect(result.stderr.contains("Invalid state: "))
+    #expect(result.stderr.contains(url.path))
+    #expect(result.stderr.contains("could not be decoded"))
+    #expect(try Data(contentsOf: url) == malformed)
+    #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(".agents").path))
+  }
+
+  @Test(arguments: [["list"], ["list", "--all"]])
+  func listRejectsUndecodableResolvedFile(_ arguments: [String]) throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let url = root.appendingPathComponent(".agent/skills.resolved")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(#"{"version":1}"#.utf8).write(to: url)
+
+    let result = try runSkills(
+      arguments, currentDirectory: root,
+      environment: isolatedCLIEnvironment(home: root.appendingPathComponent("home")))
+    #expect(result.exitCode != 0)
+    #expect(result.stderr.contains("skills.resolved"))
+    #expect(result.stderr.contains("could not be decoded"))
+    #expect(!result.stdout.contains("No project skills found"))
+  }
+
+  @Test func doctorJSONReportsUndecodableResolvedFile() throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let url = root.appendingPathComponent(".agent/skills.resolved")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data("{broken".utf8).write(to: url)
+
+    let result = try runSkills(
+      ["doctor", "--json"], currentDirectory: root,
+      environment: isolatedCLIEnvironment(home: root.appendingPathComponent("home")))
+    #expect(result.exitCode == 0)
+    let report = try #require(
+      JSONSerialization.jsonObject(with: Data(result.stdout.utf8)) as? [String: Any])
+    #expect(report["ok"] as? Bool == false)
+    let checks = try #require(report["checks"] as? [[String: Any]])
+    let check = try #require(checks.first { $0["id"] as? String == "resolved-file" })
+    #expect(check["status"] as? String == "error")
+    #expect((check["message"] as? String)?.contains("skills.resolved") == true)
+    #expect((check["message"] as? String)?.contains("could not be decoded") == true)
+  }
+
   @Test(arguments: [["gone"], ["--skill", "gone"], ["--all"]], ["project", "user"])
   func removesMissingManagedSkills(_ selection: [String], scope: String) throws {
     let project = try cliTemporaryDirectory()

@@ -219,6 +219,9 @@ public struct UpdateResult: Codable, Equatable, Sendable {
 
 public enum RuntimeService {
   public static func add(_ options: AddOptions) throws -> AddOutcome {
+    if !options.listOnly {
+      _ = try InstallLockStore.load(scope: options.scope, environment: options.environment)
+    }
     if options.mode == .edit, options.watch || options.watchOnly {
       throw CoreError.invalidSource("--mode edit cannot be combined with --watch or --watch-only")
     }
@@ -334,19 +337,17 @@ public enum RuntimeService {
     let watchLedger = try? WatchLedgerStore.load(environment: environment)
     var managedByPath: [String: InstalledSkill] = [:]
     var managedBySharedPath: [String: InstalledSkill] = [:]
-    if let managed = try? listManaged(
+    let managed = try listManaged(
       scope: scope, agents: AgentID.allCases, environment: environment)
-    {
-      let requestedAgents = Set(agents)
-      for skill in managed {
-        let path = URL(fileURLWithPath: skill.path).standardizedFileURL.path
-        let key = "\(skill.agent.rawValue)\u{1f}\(path)"
-        if requestedAgents.contains(skill.agent), managedByPath[key] == nil {
-          managedByPath[key] = skill
-        }
-        if managedBySharedPath[path] == nil {
-          managedBySharedPath[path] = skill
-        }
+    let requestedAgents = Set(agents)
+    for skill in managed {
+      let path = URL(fileURLWithPath: skill.path).standardizedFileURL.path
+      let key = "\(skill.agent.rawValue)\u{1f}\(path)"
+      if requestedAgents.contains(skill.agent), managedByPath[key] == nil {
+        managedByPath[key] = skill
+      }
+      if managedBySharedPath[path] == nil {
+        managedBySharedPath[path] = skill
       }
     }
     var installed: [InstalledSkill] = []
@@ -457,6 +458,19 @@ public enum RuntimeService {
     var checks: [DoctorCheck] = []
     let lockURL = InstallLockStore.lockURL(scope: scope, environment: environment)
     let lockExists = FileManager.default.fileExists(atPath: lockURL.path)
+    var managed: [InstalledSkill]
+    do {
+      managed = try listManaged(scope: scope, agents: agents, environment: environment)
+    } catch {
+      return DoctorReport(checks: [
+        DoctorCheck(
+          id: "resolved-file",
+          status: .error,
+          message: String(describing: error),
+          hint: "Repair or restore the resolved file before managing installed skills.",
+          path: lockExists ? lockURL.path : nil)
+      ])
+    }
     checks.append(
       DoctorCheck(
         id: "resolved-file",
@@ -468,7 +482,6 @@ public enum RuntimeService {
         path: lockURL.path
       ))
 
-    var managed = try listManaged(scope: scope, agents: agents, environment: environment)
     let installed = try listInstalled(scope: scope, agents: agents, environment: environment)
     let managedPaths = Set(
       managed.map {
@@ -694,7 +707,7 @@ public enum RuntimeService {
     var results: [InstallResult] = []
     for packet in packets {
       let targets =
-        agents.map { explicitAgents in
+        try agents.map { explicitAgents in
           explicitAgents.map { agent in
             InstallationPin(scope: scope, agent: agent, mode: mode, path: "")
           }
@@ -854,12 +867,10 @@ public enum RuntimeService {
     sourceIdentity: String,
     watchedPath: String,
     environment: RuntimeEnvironment
-  ) -> [InstallationPin] {
+  ) throws -> [InstallationPin] {
     var targets: [InstallationPin] = []
     for scope in [InstallScope.project, .global] {
-      guard let lock = try? InstallLockStore.load(scope: scope, environment: environment) else {
-        continue
-      }
+      let lock = try InstallLockStore.load(scope: scope, environment: environment)
       for source in lock.pins where source.identity == sourceIdentity {
         for skill in source.skills where skillDirectoryPath(from: skill.path) == watchedPath {
           targets.append(contentsOf: skill.installations)

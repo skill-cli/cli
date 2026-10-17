@@ -6,6 +6,7 @@ public enum CoreError: Error, CustomStringConvertible, Equatable {
   case unsupported(String)
   case notFound(String)
   case invalidSkill(String)
+  case invalidState(String)
   case commandFailed(String)
 
   public var description: String {
@@ -20,6 +21,8 @@ public enum CoreError: Error, CustomStringConvertible, Equatable {
       return "Not found: \(message)"
     case .invalidSkill(let message):
       return "Invalid skill: \(message)"
+    case .invalidState(let message):
+      return "Invalid state: \(message)"
     case .commandFailed(let message):
       return "Command failed: \(message)"
     }

@@ -138,29 +138,6 @@ extension RuntimeServiceWorkflowTests {
 }
 
 extension InstallLockTests {
-  @Test func returnsEmptyLockForCorruptJSON() throws {
-    let project = try temporaryDirectory()
-    let environment = RuntimeEnvironment(
-      projectDirectory: project, homeDirectory: try temporaryDirectory(), environment: [:])
-    try FileManager.default.createDirectory(
-      at: InstallLockStore.projectLockURL(environment: environment).deletingLastPathComponent(),
-      withIntermediateDirectories: true)
-    try """
-    {
-      "version": 1,
-      "pins": [
-    <<<<<<< HEAD
-      ]
-    }
-    """.write(
-      to: InstallLockStore.projectLockURL(environment: environment), atomically: true,
-      encoding: .utf8
-    )
-
-    let lock = try InstallLockStore.load(scope: .project, environment: environment)
-    #expect(lock == LockFile())
-  }
-
   @Test func migratesLocalLockEntriesFromCompatibilityFormat() throws {
     let project = try temporaryDirectory()
     let environment = RuntimeEnvironment(

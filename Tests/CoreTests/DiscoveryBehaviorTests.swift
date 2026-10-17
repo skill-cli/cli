@@ -5,6 +5,29 @@ import Testing
 
 @Suite("Skill Discovery")
 struct SkillDiscoveryTests {
+  @Test(arguments: [false, true])
+  func discoversSkillsWithUndecodableResolvedHint(_ hasLegacyDiscoveryLock: Bool) throws {
+    let root = try discoveryTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try writeDiscoverySkill(root.appendingPathComponent("skills/source"), name: "source")
+    try writeDiscoverySkill(
+      root.appendingPathComponent(".agents/skills/installed"), name: "installed")
+    let url = root.appendingPathComponent(".agent/skills.resolved")
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let malformed = Data("{broken".utf8)
+    try malformed.write(to: url)
+    if hasLegacyDiscoveryLock {
+      try Data(#"{"version":1,"skills":{"installed":{}}}"#.utf8).write(
+        to: root.appendingPathComponent("skills-lock.json"))
+    }
+
+    #expect(
+      try Discovery.discover(in: root).map(\.name).sorted()
+        == (hasLegacyDiscoveryLock ? ["source"] : ["installed", "source"]))
+    #expect(try Data(contentsOf: url) == malformed)
+  }
+
   @Test func discoversNestedSkillsWhenFullDepthIsEnabled() throws {
     let root = try discoveryTemporaryDirectory()
     try writeDiscoverySkill(root, name: "root-skill")
