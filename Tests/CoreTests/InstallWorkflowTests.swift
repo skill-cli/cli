@@ -315,6 +315,10 @@ extension InstallerTests {
 struct SourceResolutionTests {
   @Test(arguments: [
     (SourceRequirement.upToNextMajor(from: "1.0.0"), ["1.0.0", "1.5.0", "2.0.0-alpha.1"], "1.5.0"),
+    (
+      SourceRequirement.upToNextMajor(from: "1.0.0"),
+      ["1.0.0", "1.5.0+build.1", "1.5.0+build.2", "2.0.0-alpha.1"], "1.5.0+build.2"
+    ),
     (SourceRequirement.upToNextMinor(from: "1.0.0"), ["1.0.0", "1.0.5", "1.1.0-alpha.1"], "1.0.5"),
     (
       SourceRequirement.range(from: "1.0.0", to: "1.1.0"),
