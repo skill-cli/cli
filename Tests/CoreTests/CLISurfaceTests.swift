@@ -231,7 +231,7 @@ struct CLISurfaceTests {
     #expect(try runSkills(["--help"]).stdout.contains("SUBCOMMANDS"))
     #expect(try runSkills(["-h"]).stdout.contains("SUBCOMMANDS"))
     #expect(
-      try runSkills(["--version"]).stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0.2.1"
+      try runSkills(["--version"]).stdout.trimmingCharacters(in: .whitespacesAndNewlines) == "0.2.2"
     )
 
     for alias in ["a"] {
