@@ -68,7 +68,10 @@ skill add larksuite/cli@revision:abc123@path:skills/lark-base
 Rules:
 
 - exact versions retain prerelease and build identifiers; an optional `v` tag
-  prefix is accepted, and ranges use SemVer precedence
+  prefix is accepted
+- ranges include versions at or above the lower bound and below the upper bound
+  using SemVer precedence; prereleases are eligible only when a bound also has
+  prerelease identifiers and shares the candidate's `major.minor.patch`
 - known requirement labels are `branch`, `revision`, `exact`, `from`,
   `minor`, and `ref`
 - known selector labels are `path` and `skill`

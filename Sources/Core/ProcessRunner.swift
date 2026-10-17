@@ -255,7 +255,7 @@ public enum Git {
       throw CoreError.invalidSource("version upper bound must be greater than lower bound")
     }
     let candidates = tags(in: checkout)
-      .filter { $0.version >= lowerBound && $0.version < upperBound }
+      .filter { $0.version.isInRange(from: lowerBound, to: upperBound) }
       .sorted { lhs, rhs in
         if lhs.version == rhs.version {
           return lhs.tag < rhs.tag

@@ -118,6 +118,17 @@ public struct SemanticVersion: Comparable, Equatable, Sendable, CustomStringConv
     return "\(major).\(minor).\(patch)" + suffix + metadata
   }
 
+  /// Checks a lower-inclusive, upper-exclusive range using SemVer precedence.
+  /// Prereleases require a prerelease bound with the same major, minor, and patch.
+  public func isInRange(from lowerBound: SemanticVersion, to upperBound: SemanticVersion) -> Bool {
+    guard self >= lowerBound && self < upperBound else { return false }
+    return prerelease.isEmpty
+      || [lowerBound, upperBound].contains { bound in
+        !bound.prerelease.isEmpty
+          && major == bound.major && minor == bound.minor && patch == bound.patch
+      }
+  }
+
   // Build metadata does not affect SemVer precedence.
   public static func == (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
     lhs.major == rhs.major && lhs.minor == rhs.minor && lhs.patch == rhs.patch
