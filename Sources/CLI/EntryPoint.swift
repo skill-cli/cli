@@ -20,7 +20,7 @@ struct SkillCLI: ParsableCommand {
       """,
     subcommands: [
       Add.self, ListSkills.self, Remove.self, UpdateSkills.self, Initialize.self, Install.self,
-      Doctor.self,
+      Doctor.self, Watch.self,
     ]
   )
 
@@ -64,7 +64,7 @@ enum EntryPoint {
       if let code = error as? ExitCode {
         Darwin.exit(code.rawValue)
       }
-      Terminal.error(Terminal.failureMessage(error))
+      Terminal.error(Terminal.failureMessage(error, command: command))
       Darwin.exit(1)
     }
   }

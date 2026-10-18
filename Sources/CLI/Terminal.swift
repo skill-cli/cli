@@ -1,5 +1,6 @@
 import AgentsCore
 import AgentsSkills
+import ArgumentParser
 import Foundation
 
 func withRecovery<T>(
@@ -29,11 +30,24 @@ enum Terminal {
       .joined()
   }
 
-  static func failureMessage(_ error: Error) -> String {
+  static func failureMessage(_ error: Error, command: any ParsableCommand) -> String {
     let action: String
     switch error {
     case CoreError.transactionRecovered:
       action = "retry the command after other writers finish"
+    case CoreError.notFound(let message) where message.hasPrefix("source is not subscribed:"):
+      action = "run 'skill watch' to list subscriptions"
+    case CoreError.invalidSource("expected a local path or repository URL")
+    where command is DiffWatch || command is SeenWatch || command is RemoveWatch:
+      action = "run 'skill watch' to list subscriptions"
+    case CoreError.invalidSource("invalid watch revision"):
+      action = "provide a Git revision that resolves to a commit in the watched source"
+    case CoreError.invalidSource("well-known subscriptions do not accept Git revisions"):
+      action = "omit --revision to mark the current index seen"
+    case CoreError.commandFailed(let message)
+    where (command as? SeenWatch)?.revision != nil
+      && message.contains(" rev-parse --verify --end-of-options "):
+      action = "provide a Git revision that resolves to a commit in the watched source"
     case CoreError.invalidSource, CoreError.notFound:
       action = "check the source, names, and paths"
     case CoreError.unsafePath:
@@ -90,12 +104,18 @@ enum Terminal {
     }
   }
 
-  private static func snapshot(_ entry: SkillFileEntry?, prefix: String) {
+  static func snapshot(
+    _ entry: SkillFileEntry?, prefix: String, executable: Bool? = nil,
+    write: (String) -> Void = Terminal.write
+  ) {
     switch entry {
     case nil: write("\(prefix) [absent]\n")
     case .directory: write("\(prefix) [directory]\n")
     case .symbolicLink(let destination): write("\(prefix) [symlink -> \(line(destination))]\n")
     case .file(let data):
+      if let executable {
+        write("\(prefix) [\(executable ? "executable" : "non-executable")]\n")
+      }
       if let text = String(data: data, encoding: .utf8), !data.contains(0) {
         for textLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
           write("\(prefix)\(line(String(textLine)))\n")

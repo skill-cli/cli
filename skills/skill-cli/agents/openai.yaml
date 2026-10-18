@@ -1,4 +1,4 @@
 interface:
   display_name: "skill-cli"
-  short_description: "Manage declared agent skills with the skill CLI"
-  default_prompt: "Use skill to discover, add, list, restore, preview or apply updates, remove, initialize, or diagnose agent skills in the requested scope."
+  short_description: "Manage skills and watch source changes"
+  default_prompt: "Use skill to discover, add, list, restore, preview or apply updates, remove, initialize, diagnose agent skills, or subscribe to sources, inspect watch status and diffs, mark changes seen, and remove subscriptions in the requested scope."

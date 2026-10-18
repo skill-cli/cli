@@ -21,7 +21,10 @@ range. This repository has no library target. It does not depend on
 
 The CLI owns argument validation, help, version output, JSON report schemas,
 terminal rendering, recovery notices, and exit codes. It calls `SkillOperations`
-for discovery, add, list, update, restore, removal, initialization, and doctor.
+for discovery, add, list, update, restore, removal, initialization, doctor, and
+watch subscriptions. `SkillOperations.watchOperations()` supplies skill discovery
+and artifact loading to core; watch also reports instruction units without
+rendering or installing them.
 `AgentsSkills` owns skill behavior; `AgentsCore` owns source identity,
 requirements, cache, declaration, resolved state, transactions, recovery, and
 agent locations. Instruction declarations, locked records, and target files
@@ -40,11 +43,17 @@ named update command for both selected and all-skill updates.
 | `Sources/CLI/SkillCommands.swift` | Add, list, remove, and init commands |
 | `Sources/CLI/LifecycleCommands.swift` | Install, update options and command, doctor roots |
 | `Sources/CLI/Terminal.swift` | One recovery retry, errors, human output, snapshots, JSON encoding |
+| `Sources/CLI/WatchCommands.swift` | Subscription add, status, diff, seen, and removal |
+| `Sources/CLI/WatchRendering.swift` | Watch summaries, display order, and typed snapshots |
+| `Sources/CLI/WatchReports.swift` | Versioned watch status and diff DTOs |
 | `Sources/CLI/JSONReports.swift` | Versioned CLI report DTOs |
 | `Tests/CLITests/CLIFixture.swift` | Isolated homes, local Git sources, subprocess runner, cleanup |
 | `Tests/CLITests/ParsingTests.swift` | Option mapping and invalid combinations |
 | `Tests/CLITests/ConventionTests.swift` | Recovery, fixture cleanup, file snapshot encoding, terminal sanitization |
 | `Tests/CLITests/ExecutableTests.swift` | Lifecycle, help, output schemas, exits, environment isolation |
+| `Tests/CLITests/WatchParsingTests.swift` | Watch options, requirements, default status, and kind filters |
+| `Tests/CLITests/WatchExecutableTests.swift` | Watch lifecycle, read-only inspection, errors, recovery, and help |
+| `Tests/CLITests/WatchReportTests.swift` | Artifact reports, confirmation identities, and snapshot encoding |
 | `Tests/CLITests/StateBoundaryTests.swift` | Instruction preservation and state ownership through the executable |
 
 ## Data Flow and State
@@ -53,8 +62,12 @@ Commands parse options, call `SkillOperations`, then render its returned models.
 Updates provide a callback that prints full before/after snapshots before core
 commits replacements. `install` uses exact locked pins and recipients.
 
-Project state is `.agent/agents.json` and `.agent/agents.resolved`; user state
-uses the same filenames under `~/.agents/`. Each scope has a `cache/` directory.
+Project state is `.agent/agents.json`, `.agent/agents.resolved`, and
+`.agent/agents.watch`; user state uses the same filenames under `~/.agents/`.
+Each scope has a `cache/` directory. Subscriptions live in the declaration;
+watch baselines live in `agents.watch`. Both CLIs share these formats.
+Watch status and diff may fetch sources but preserve declarations, locks,
+baselines, installations, and source working trees.
 Core owns validation, deterministic encoding, source mirrors, pinned content,
 installation paths, locking, transaction journals, and pruning. Read commands
 may populate caches, while doctor only inspects existing state. Mutating
@@ -68,6 +81,10 @@ for those invariants and [CLI reference](../Reference/CLI.md) for the command co
 CLI tests exercise the executable with explicit environments and local Git
 fixtures, cleaning up their own roots. Core's tests own resolver, discovery,
 artifact, storage, concurrency, and installation algorithm coverage.
+`Scripts/check-parity.py` compares lifecycle and watch behavior with a supplied
+read-only `agents` checkout, including exact declaration, lock, and baseline
+bytes. It builds the reference executable in this worktree and cleans its
+isolated fixtures.
 CI requires strict formatting, an optimized build, tests, release executable
 smoke checks, and a diff check.
 

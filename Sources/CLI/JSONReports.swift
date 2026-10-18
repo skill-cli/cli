@@ -110,18 +110,39 @@ struct FileChange: Encodable {
     before = change.before.map(FileEntry.init)
     after = change.after.map(FileEntry.init)
   }
+
+  init(_ change: WatchFileChange) {
+    path = change.path
+    before = change.before.map(FileEntry.init)
+    after = change.after.map(FileEntry.init)
+  }
 }
 
 struct FileEntry: Encodable {
   let kind: String
   var base64: String?
   var destination: String?
+  var executable: Bool?
 
   init(_ entry: SkillFileEntry) {
     switch entry {
     case .file(let data):
       kind = "file"
       base64 = data.base64EncodedString()
+    case .directory:
+      kind = "directory"
+    case .symbolicLink(let target):
+      kind = "symlink"
+      destination = target
+    }
+  }
+
+  init(_ entry: WatchFileEntry) {
+    switch entry {
+    case .file(let data, let executable):
+      kind = "file"
+      base64 = data.base64EncodedString()
+      self.executable = executable
     case .directory:
       kind = "directory"
     case .symbolicLink(let target):

@@ -51,8 +51,11 @@ struct StateBoundaryTests {
     try fixture.skill(body: "New committed skill")
     try fixture.commit()
     for command in [
-      ["list", "--json"], ["install"], ["update", "--json"], ["update", "--apply"],
-      ["add", fixture.source.path, "demo"], ["doctor", "--json"], ["remove", "demo"],
+      ["list", "--json"], ["install", "--json"], ["update", "--json"], ["update", "--apply"],
+      ["add", fixture.source.path, "demo"], ["doctor", "--json"],
+      ["watch", "add", fixture.source.path], ["watch", "status", "--json"],
+      ["watch", "diff", fixture.source.path, "--json"], ["watch", "seen", fixture.source.path],
+      ["watch", "remove", fixture.source.path], ["remove", "demo"],
     ] {
       try fixture.success(command + scopeArguments)
       #expect(try store.loadDeclaration().instructions == declaration.instructions)
