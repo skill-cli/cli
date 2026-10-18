@@ -158,6 +158,9 @@ Terminal control characters in human-readable source text are replaced by spaces
 | `1` | Operation failure or a completed doctor report containing an error check |
 | `64` | Invalid usage, including unknown commands, options, or invalid option combinations |
 
+An unknown command or subcommand exits `64` with the message
+`Unknown command '<name>'`, including when `--help` follows it.
+
 Doctor's `ok` means there are no error checks; warnings do not make it false.
 A failed operation emits no successful JSON report. JSON stdout contains only
 one object and a trailing newline; recovery notices remain on stderr.
