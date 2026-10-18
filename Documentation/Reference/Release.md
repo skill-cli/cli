@@ -8,7 +8,7 @@ maintenance and publication. Tagging, releases, and tap publication require
 maintainer authorization.
 
 Each block is a single command chain that stops at the first failure; tagging
-refuses to run unless the earlier check blocks set their markers.
+and publishing each refuse to run unless the earlier blocks set their markers.
 
 ## Prepare the Candidate
 
@@ -53,7 +53,12 @@ unset checked_commit checked_version &&
 ```
 
 Lint must produce zero findings. Set the intended version explicitly, using the
-CLI's existing `vX.Y.Z` tag convention:
+CLI's existing `vX.Y.Z` tag convention.
+
+Before using the intended version, run the guard below once with a deliberately
+different proposed version. Immediately confirm that
+`test "$?" -ne 0 && test -z "${checked_version+x}"` succeeds, then rerun the guard
+with the intended version.
 
 ```sh
 unset checked_version &&
@@ -75,18 +80,21 @@ With the configured local signing key available, create a signed annotated tag
 on the checked commit. Never move or reuse a published tag.
 
 ```sh
-test "${checked_commit:-}" = "$release_commit" &&
+unset verified_tag &&
+  test "${checked_commit:-}" = "$release_commit" &&
   test "${checked_version:-}" = "$version" &&
   git tag -s "$tag" "$release_commit" -m "Release $version" &&
   git verify-tag "$tag" &&
-  test "$(git rev-parse "$tag^{commit}")" = "$release_commit"
+  test "$(git rev-parse "$tag^{commit}")" = "$release_commit" &&
+  verified_tag=$tag
 ```
 
 Set `notes_file` to the prepared release notes. Push and verify the remote
 annotated tag's peeled commit before creating the GitHub release:
 
 ```sh
-git push origin "refs/tags/$tag" &&
+test "${verified_tag:-}" = "$tag" &&
+  git push origin "refs/tags/$tag" &&
   remote_ref=$(git ls-remote --exit-code origin "refs/tags/$tag^{}") &&
   test "${remote_ref%%[[:space:]]*}" = "$release_commit" &&
   gh release create "$tag" --verify-tag --title "$tag" --notes-file "$notes_file"
