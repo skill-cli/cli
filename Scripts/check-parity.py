@@ -193,7 +193,10 @@ def scenario(root, scope, mode, skill_command, agents_command):
     assert "empty file demo/old-empty removed\n" in preview, preview
     both(["update", "--apply"], skills=True)
     state()
-    both(["update"], skills=True)
+    for arguments in (["update"], ["update", "--apply"],
+                      ["update", "demo"], ["update", "demo", "--apply"]):
+        assert both(arguments, skills=True) == "No skill changes.\n", arguments
+    state()
     both(["list"], skills=True)
     both(["watch", "diff", str(source)])
     both(["watch", "seen", str(source), "--revision", initial])

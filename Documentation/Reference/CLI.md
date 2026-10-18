@@ -243,8 +243,10 @@ Preview only. Run again with --apply to write these changes.
 
 `--apply` prints the preview before core writes, followed by
 `Updated <skill> for <recipients>.` Removed skill recipients get
-`Removed <skill> for <recipients>.` Completions print as soon as the skill
-operation succeeds. A preview can become stale; `--apply` resolves again and
+`Removed <skill> for <recipients>.` Update and removal completions print only for
+changed results, as soon as the skill operation succeeds. Named and all-skill
+updates print `No skill changes.` when unchanged, including with `--apply`.
+A preview can become stale; `--apply` resolves again and
 displays the content it will actually write. `--json --apply` is a usage error.
 
 Completion lines name their content and destinations. For example,

@@ -64,7 +64,7 @@ extension Terminal {
     _ results: [UpdateResult], previous: SkillOutputInventory,
     write: (String) -> Void = Terminal.write
   ) {
-    for result in results.sorted(by: { $0.skill < $1.skill }) {
+    for result in results.sorted(by: { $0.skill < $1.skill }) where result.changed {
       let before = previous.agents(for: result.skill)
       let after = Set(result.installed.map(\.agent))
       let removed = before.subtracting(after)

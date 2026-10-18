@@ -8,6 +8,19 @@ import Testing
 #endif
 
 struct SkillOutputExecutableTests {
+  @Test(arguments: [
+    ["update"], ["update", "--apply"],
+    ["update", "pdf"], ["update", "pdf", "--apply"],
+  ])
+  func unchangedUpdatesReportNoSkillChanges(_ arguments: [String]) throws {
+    let fixture = try CLIFixture()
+    try fixture.skill("pdf")
+    try fixture.commit()
+    try fixture.success(["add", fixture.source.path, "pdf"])
+    let output = try fixture.success(arguments).stdout
+    #expect(output == "No skill changes.\n")
+  }
+
   @Test(arguments: ["project", "user"], ["link", "copy"])
   func skillDiffsAppearOnce(scope: String, mode: String) throws {
     let fixture = try CLIFixture()
@@ -129,6 +142,10 @@ struct SkillOutputExecutableTests {
     try fixture.skill("pdf")
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
+    if command == "update" {
+      try fixture.skill("pdf", body: "Updated content")
+      try fixture.commit()
+    }
     let journal = fixture.state("transaction.new")
     try Data("partial journal".utf8).write(to: journal)
     let preview = try fixture.run(["update"])
