@@ -7,6 +7,8 @@ struct ScopeOptions: ParsableArguments {
     help: "Where state lives: project (./.agent) or user (~/.agents). Default: project.",
     transform: parseScope)
   var scope: InstallScope = .project
+
+  var paths: HumanPaths { HumanPaths(scope: scope) }
 }
 
 private func parseScope(_ value: String) throws -> InstallScope {
@@ -77,7 +79,7 @@ struct RequirementOptions: ParsableArguments {
         _ = try JSONDecoder().decode(
           SourceRequirement.self, from: JSONEncoder().encode(requirement))
       } catch {
-        throw ValidationError("\(error); provide a valid source requirement")
+        throw ValidationError("\(error)\nProvide a valid source requirement.")
       }
     }
   }

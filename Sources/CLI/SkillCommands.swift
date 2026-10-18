@@ -91,7 +91,7 @@ struct ListSkills: ParsableCommand {
       } else {
         for skill in skills {
           Terminal.write(
-            "\(Terminal.line(skill.name))  \(skill.agent.rawValue)  \(skill.status.rawValue)  \(Terminal.line(skill.path))\n"
+            "\(Terminal.line(skill.name))  \(skill.agent.rawValue)  \(skill.status.rawValue)  \(location.paths.path(skill.path))\n"
           )
         }
       }
@@ -112,11 +112,13 @@ struct Remove: ParsableCommand {
   }
 
   func run() throws {
-    let removed = try withRecovery {
-      try SkillOperations.remove(
+    let (removed, previous) = try withRecovery {
+      let previous = SkillOutputInventory.read(scope: location.scope, agents: agents.recipients)
+      let removed = try SkillOperations.remove(
         skillNames: names, scope: location.scope, agents: agents.recipients)
+      return (removed, previous)
     }
-    for name in removed { Terminal.write("Removed \(Terminal.line(name)).\n") }
+    Terminal.removedSkills(removed, previous: previous)
   }
 }
 
@@ -132,6 +134,6 @@ struct Initialize: ParsableCommand {
       try SkillOperations.initializeSkill(
         named: name, directory: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
     }
-    Terminal.write("Created \(Terminal.line(root.appendingPathComponent("SKILL.md").path)).\n")
+    Terminal.write("Created \(HumanPaths().path(root.appendingPathComponent("SKILL.md").path)).\n")
   }
 }

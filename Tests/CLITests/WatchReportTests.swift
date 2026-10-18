@@ -65,7 +65,7 @@ struct WatchReportTests {
       output.hasSuffix("  + new      new (artifact)\n  ~ changed  demo (artifact)   1 file\n"))
   }
 
-  @Test func watchSnapshotsPreserveEntryKindsAndSanitizeText() throws {
+  @Test func watchJSONPreservesEntryKinds() throws {
     let entries: [WatchFileEntry] = [
       .file(Data([0, 255]), executable: true), .directory, .symbolicLink("../target\u{1B}"),
     ]
@@ -75,24 +75,6 @@ struct WatchReportTests {
     #expect(values[0]["executable"] as? Bool == true)
     #expect(values[1] as? [String: String] == ["kind": "directory"])
     #expect(values[2]["destination"] as? String == "../target\u{1B}")
-    var output = ""
-    for entry in entries { Terminal.snapshot(entry, prefix: "+") { output += $0 } }
-    Terminal.snapshot(
-      WatchFileEntry.file(Data("text\t\u{1B}".utf8), executable: false), prefix: "+"
-    ) {
-      output += $0
-    }
-    #expect(
-      output == """
-        + [executable]
-        + [binary file, 2 bytes; base64: AP8=]
-        + [directory]
-        + [symlink -> ../target ]
-        + [non-executable]
-        +text\u{20}\u{20}
-        \\ No newline at end of file
-
-        """)
   }
 }
 

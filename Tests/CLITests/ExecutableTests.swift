@@ -27,6 +27,10 @@ struct ExecutableTests {
     #expect(item["mode"] as? String == mode && item["installed"] as? Bool == true)
     let installed = URL(fileURLWithPath: try #require(item["path"] as? String))
     #expect(installed.path.hasPrefix(fixture.root.path))
+    let humanList = try fixture.success(["list"] + scopeArguments).stdout
+    let displayPath = scope == "user" ? "~/.agents/skills/demo" : ".agents/skills/demo"
+    #expect(humanList.contains(displayPath))
+    #expect(!humanList.contains(installed.path))
     let lock = try Data(contentsOf: fixture.state("agents.resolved", scope: scope))
     let declaration = try Data(contentsOf: fixture.state("agents.json", scope: scope))
     try FileManager.default.removeItem(at: installed)
@@ -71,7 +75,8 @@ struct ExecutableTests {
     #expect(try Data(contentsOf: fixture.state("agents.json", scope: scope)) == declaration)
     let applied = try fixture.success(["update", "--apply"] + scopeArguments)
     let diffIndex = try #require(applied.stdout.range(of: "+Updated upstream content")?.lowerBound)
-    let appliedIndex = try #require(applied.stdout.range(of: "Applied skill update.")?.lowerBound)
+    let appliedIndex = try #require(
+      applied.stdout.range(of: "Updated demo for codex.\n")?.lowerBound)
     #expect(diffIndex < appliedIndex)
     #expect(try Data(contentsOf: file) == Data(base64Encoded: try #require(after["base64"])))
     let clean = try fixture.success(["update", "--json"] + scopeArguments).json()
@@ -234,7 +239,7 @@ struct ExecutableTests {
       } else {
         #expect(result.stdout.contains("skills error: Transaction recovery is pending"))
         #expect(result.stdout.contains(remedy))
-        #expect(result.stdout.contains("(\(state.path))"))
+        #expect(result.stdout.contains(scope == "user" ? "(~/.agents)" : "(.agent)"))
       }
       #expect(try FileManager.default.subpathsOfDirectory(atPath: state.path).sorted() == paths)
       #expect(try files.map { try Data(contentsOf: $0) } == before)
@@ -281,9 +286,11 @@ struct ExecutableTests {
     #expect((byName["empty"]?["before"] as? [String: String]) == ["kind": "directory"])
     #expect(byName["empty"]?["after"] == nil && byName["obsolete"]?["after"] == nil)
     let apply = try fixture.success(["update", "demo", "--apply"])
-    #expect(apply.stdout.contains("[binary file, 2 bytes; base64: AP4=]"))
-    #expect(apply.stdout.contains("[symlink -> binary]") && apply.stdout.contains("[directory]"))
-    #expect(apply.stdout.contains("[absent]"))
+    #expect(apply.stdout.contains("Binary file demo/binary differs"))
+    #expect(
+      apply.stdout.contains("link demo/link: SKILL.md -> binary")
+        && apply.stdout.contains("directory demo/empty removed"))
+    #expect(apply.stdout.contains("+++ /dev/null"))
     #expect(!FileManager.default.fileExists(atPath: target.appendingPathComponent("obsolete").path))
     #expect(!FileManager.default.fileExists(atPath: target.appendingPathComponent("empty").path))
   }
@@ -418,8 +425,8 @@ struct ExecutableTests {
     let result = try fixture.run(arguments)
     #expect(result.status == 64)
     #expect(result.stdout.isEmpty && result.stderr.hasPrefix("Error:"))
-    #expect(result.stderr.split(separator: "\n").count == 1)
-    #expect(result.stderr.contains("skill --help"))
+    #expect(result.stderr.split(separator: "\n").dropFirst().allSatisfy { $0.hasPrefix("  ") })
+    #expect(result.stderr.hasSuffix("\n  Run 'skill --help' for usage.\n"))
     if arguments.contains("unknown") {
       #expect(result.stderr.contains("Unknown command 'unknown'"))
     } else if arguments.contains("-") {
@@ -439,7 +446,7 @@ struct ExecutableTests {
       ])
     let result = try fixture.run(["remove", "missing\nname"])
     #expect(result.status == 1 && result.stdout.isEmpty)
-    #expect(result.stderr.split(separator: "\n").count == 1)
-    #expect(result.stderr.contains("check the source"))
+    #expect(result.stderr.split(separator: "\n").dropFirst().allSatisfy { $0.hasPrefix("  ") })
+    #expect(result.stderr.hasSuffix("\n  Check the source, names, and paths.\n"))
   }
 }
