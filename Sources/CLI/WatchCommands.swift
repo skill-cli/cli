@@ -42,7 +42,7 @@ struct AddWatch: ParsableCommand {
     }
     let suffix =
       if case .revision(let revision) = seen { " from \(revision.prefix(7))" } else { "" }
-    Terminal.write("Watching \(Terminal.line(id + suffix)).\n")
+    Terminal.write("Watching \(location.paths.source(id))\(Terminal.line(suffix)).\n")
   }
 }
 
@@ -60,7 +60,7 @@ struct WatchStatusCommand: ParsableCommand {
     if json {
       try Terminal.json(WatchStatusReport(scope: location.scope.rawValue, statuses: statuses))
     } else {
-      Terminal.watchStatus(statuses)
+      Terminal.watchStatus(statuses, paths: location.paths)
     }
   }
 }
@@ -84,7 +84,7 @@ struct DiffWatch: ParsableCommand {
     if json {
       try Terminal.json(WatchDiffReport(scope: location.scope.rawValue, status: status))
     } else {
-      Terminal.watchDifferences(status)
+      Terminal.watchDifferences(status, paths: location.paths)
     }
   }
 }
@@ -108,7 +108,7 @@ struct SeenWatch: ParsableCommand {
       return (id, seen)
     }
     let suffix = if case .revision(let revision) = seen { " at \(revision.prefix(7))" } else { "" }
-    Terminal.write("Marked \(Terminal.line(id)) seen\(Terminal.line(suffix)).\n")
+    Terminal.write("Marked \(location.paths.source(id)) seen\(Terminal.line(suffix)).\n")
   }
 }
 
@@ -128,7 +128,7 @@ struct RemoveWatch: ParsableCommand {
       try SkillOperations.watchOperations().remove(source, scope: location.scope)
       return id
     }
-    Terminal.write("Stopped watching \(Terminal.line(id)); installations are unchanged.\n")
+    Terminal.write("Stopped watching \(location.paths.source(id)); installations are unchanged.\n")
   }
 }
 

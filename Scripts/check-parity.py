@@ -11,11 +11,17 @@ PACKAGE = Path(__file__).resolve().parents[1]
 STATE_FILES = ("agents.json", "agents.resolved", "agents.watch")
 
 
-def run(command, directory, environment=None):
+def execute(command, directory, environment=None):
     result = subprocess.run(
         [str(value) for value in command], cwd=directory, env=environment,
-        stdin=subprocess.DEVNULL, capture_output=True, text=True, check=True,
+        stdin=subprocess.DEVNULL, capture_output=True, text=True,
     )
+    return result
+
+
+def run(command, directory, environment=None):
+    result = execute(command, directory, environment)
+    result.check_returncode()
     return result.stdout
 
 
@@ -59,19 +65,37 @@ def scenario(root, scope, mode, skill_command, agents_command):
     def command(index, arguments, skills=False):
         prefix = skill_command if index == 0 else agents_command
         group = ["skills"] if index == 1 and skills else []
-        return run([*prefix, *group, *arguments, "--scope", scope],
-                   roots[index] / "project", environments[index])
+        scope_arguments = [] if arguments[0] == "init" else ["--scope", scope]
+        return execute([*prefix, *group, *arguments, *scope_arguments],
+                       roots[index] / "project", environments[index])
 
-    def both(arguments, skills=False, report=False):
+    def normalize(value, index):
+        value = value.replace(str(roots[index]), "/client")
+        if index == 1:
+            value = value.replace("agents skills", "skill")
+            for suffix in (" --help", " watch", " doctor"):
+                value = value.replace("agents" + suffix, "skill" + suffix)
+        return value
+
+    def both(arguments, skills=False, report=False, status=0):
         results = [command(index, arguments, skills) for index in range(2)]
+        assert all(result.returncode == status for result in results), (
+            arguments, [(result.returncode, result.stderr) for result in results])
+        errors = [normalize(result.stderr, index) for index, result in enumerate(results)]
+        assert errors[0] == errors[1], (arguments, errors)
+        results = [result.stdout for result in results]
         if report:
             results = [json.loads(value) for value in results]
             if arguments[0] == "install":
                 instructions = results[1].pop("instructions")
                 assert not instructions["changed"], instructions
             results = [json.dumps(value, sort_keys=True) for value in results]
-        normalized = [value.replace(str(client), "/client")
-                      for value, client in zip(results, roots)]
+        elif arguments[0] == "install":
+            # Top-level agents install also reports its separate instruction operation.
+            suffix = "No locked instruction targets to restore.\n"
+            assert results[1].endswith(suffix), results[1]
+            results[1] = results[1][:-len(suffix)]
+        normalized = [normalize(value, index) for index, value in enumerate(results)]
         assert normalized[0] == normalized[1], (arguments, normalized)
         return json.loads(results[0]) if report else results[0]
 
@@ -92,14 +116,24 @@ def scenario(root, scope, mode, skill_command, agents_command):
     git("init", "--initial-branch=main")
     skill(source, "demo", "Original")
     skill(source, "legacy", "Original")
+    skill(source, "repinned", "Unchanged")
+    write(source / "skills/demo/run.sh", "echo parity\n")
+    write(source / "skills/demo/old-empty", "")
+    write(source / "skills/demo/controls", "Old\ttext\r\n\x1b[31m\0\n")
+    (source / "skills/demo/data.bin").write_bytes(bytes([0, 254]))
+    (source / "skills/demo/link").symlink_to("SKILL.md")
     write(source / "instructions/rules.md", "# Rules\n\nOriginal\n")
     initial = commit()
-    both(["add", str(source), "--all", "--agent", "codex", "--mode", mode,
+    both(["init", "local-skill"], skills=True)
+    both(["list", str(source)], skills=True)
+    both(["add", str(source)], skills=True)
+    both(["add", str(source), "--all", "--mode", mode,
           "--branch", "main"], skills=True)
     installed = both(["list", "--json"], skills=True, report=True)
+    both(["list"], skills=True)
     state()
     for index in range(2):
-        rows = json.loads(command(index, ["list", "--json"], skills=True))["skills"]
+        rows = json.loads(command(index, ["list", "--json"], skills=True).stdout)["skills"]
         for row in rows:
             target = Path(row["path"])
             if target.is_symlink():
@@ -107,17 +141,26 @@ def scenario(root, scope, mode, skill_command, agents_command):
             else:
                 shutil.rmtree(target)
     both(["install", "--json"], report=True)
+    both(["install"])
     state()
     both(["watch", "add", str(source)])
     baseline = state()
     assert all(baseline[name] is not None for name in STATE_FILES)
     both(["watch", "status", "--json"], report=True)
+    both(["watch", "status"])
+    both(["watch", "diff", str(source)])
     skill(source, "demo", "Updated")
     skill(source, "new", "Added")
     shutil.rmtree(source / "skills/legacy")
     write(source / "instructions/rules.md", "# Rules\n\nUpdated\n")
     write(source / "skills/demo/run.sh", "echo parity\n")
     (source / "skills/demo/run.sh").chmod(0o755)
+    (source / "skills/demo/old-empty").unlink()
+    write(source / "skills/demo/new-empty", "")
+    write(source / "skills/demo/controls", "New\ttext\n\x1b[32m\0\n")
+    (source / "skills/demo/data.bin").write_bytes(bytes([0, 255]))
+    (source / "skills/demo/link").unlink()
+    (source / "skills/demo/link").symlink_to("run.sh")
     current = commit()
     skill(source, "uncommitted", "Ignored")
     report = both(["watch", "status", "--json"], report=True)
@@ -127,7 +170,10 @@ def scenario(root, scope, mode, skill_command, agents_command):
     assert report["sources"][0]["seen"] == {"revision": initial}
     assert report["sources"][0]["current"] == {"revision": current}
     both(["watch"])
+    both(["watch", "status"])
     both(["watch", "diff", str(source)])
+    both(["watch", "diff", str(source), "demo", "--kind", "skill"])
+    both(["watch", "diff", str(source), "rules", "--kind", "instructions"])
     both(["watch", "diff", str(source), "--json"], report=True)
     both(["watch", "diff", str(source), "rules", "--kind", "instructions", "--json"],
          report=True)
@@ -139,15 +185,38 @@ def scenario(root, scope, mode, skill_command, agents_command):
     assert all(acknowledged[name] == baseline[name] for name in STATE_FILES[:2])
     assert both(["watch", "--json"], report=True)["sources"][0]["changes"] == []
     both(["update", "--json"], skills=True, report=True)
+    preview = both(["update"], skills=True)
+    assert preview.count("--- a/demo/SKILL.md\n") == 1, preview
+    assert "= repinned  repinned  " in preview, preview
+    assert "cache/" not in preview, preview
+    assert "empty file demo/new-empty added\n" in preview, preview
+    assert "empty file demo/old-empty removed\n" in preview, preview
     both(["update", "--apply"], skills=True)
     state()
+    both(["update"], skills=True)
+    both(["list"], skills=True)
+    both(["watch", "diff", str(source)])
     both(["watch", "seen", str(source), "--revision", initial])
     state()
     both(["watch", "remove", str(source)])
     state()
-    both(["remove", "demo", "new"], skills=True)
+    both(["remove", "demo", "--agent", "claude-code"], skills=True)
     state()
-    print(f"PASS {scope}/{mode}: lifecycle, watch reports/output, all three state files")
+    both(["remove", "demo", "new", "repinned"], skills=True)
+    state()
+    both(["list"], skills=True)
+    both(["watch"])
+    both(["remove", "missing\nname"], skills=True, status=1)
+    both(["watch", "diff", str(source)], status=1)
+    both(["update", "--apply", "--json"], skills=True, status=64)
+    both(["list", "--unknown\x1b[31m"], skills=True, status=64)
+    both(["watch", "add", str(source)])
+    both(["watch", "seen", str(source), "--revision=missing"], status=1)
+    shutil.rmtree(source / ".git")
+    both(["watch", "diff", str(source)], status=1)
+    state()
+    print(f"PASS {scope}/{mode}: lifecycle/watch human stdout and stderr, JSON, state bytes",
+          flush=True)
 
 
 def main():
@@ -156,10 +225,22 @@ def main():
     parser.add_argument("--skill", type=Path, default=PACKAGE / ".build/debug/skill")
     args = parser.parse_args()
     reference = args.agents_package.expanduser().resolve()
-    agents = ["/usr/bin/swift", "run", "--package-path", str(reference),
-              "--build-path", str(PACKAGE / ".build/agents")]
-    print(run([*agents, "agents", "--version"], PACKAGE).strip(), flush=True)
-    agents += ["--skip-build", "agents"]
+    revision = run(["git", "rev-parse", "HEAD"], reference).strip()
+    reference_root = PACKAGE / ".build/agents"
+    source = reference_root / "source"
+    if source.exists():
+        shutil.rmtree(source)
+    source.mkdir(parents=True)
+    archive = subprocess.run(
+        ["git", "archive", revision], cwd=reference, capture_output=True, check=True,
+    ).stdout
+    subprocess.run(["tar", "-xf", "-", "-C", str(source)], input=archive, check=True)
+    build = ["/usr/bin/swift", "build", "--package-path", str(source),
+             "--build-path", str(reference_root / "build")]
+    run(build, PACKAGE)
+    binary_path = run([*build, "--show-bin-path"], PACKAGE).strip()
+    agents = [str(Path(binary_path) / "agents")]
+    print(f"{run([*agents, '--version'], PACKAGE).strip()} at {revision}", flush=True)
     skill_command = [str(args.skill.resolve())]
     for command in ([], ["add"], ["status"], ["diff"], ["seen"], ["remove"]):
         skill_help = run([*skill_command, "watch", *command, "--help"], PACKAGE)

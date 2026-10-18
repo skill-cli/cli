@@ -118,11 +118,9 @@ watched head. Well-known subscriptions follow the index.
 core's order. Git revisions are abbreviated to seven characters:
 
 ```text
-github.com/anthropics/skills  3 commits since a1b2c3d (now 9f8e7d6)
-  + new      pdf-forms
-  ~ changed  frontend-design   4 files
-  - removed  legacy-docx
-local:/Users/me/Developer/rules  up to date
+local:~/Developer/team-rules  1 commit since 6c09c94 (now 9661957)
+  ~ changed  code-review (instructions)   1 file
+  ~ changed  pdf   1 file
 ```
 
 The Git count is commits reachable from the current head but not the seen
@@ -132,14 +130,32 @@ or `up to date`. Instruction and artifact names carry `(instructions)` or
 new and removed items omit the file count. An empty scope prints
 `No watched sources.`
 
-`watch diff <source> [name]` prints each changed item's heading, such as
-`~ changed  frontend-design (skill)`, followed by full before/after snapshots
-using update preview rendering. All headings include the kind. File paths are
-relative to the item; snapshots retain executable mode (`[executable]` or
-`[non-executable]`), text, base64 binary bytes, symbolic-link destinations,
-directories, and absent entries. `--kind skill|instructions|artifact` filters
-changes and disambiguates shared names. With no matching changes, diff prints
-`up to date`.
+`watch diff <source> [name]` prints each changed item's heading and unified
+line diffs with three lines of context. Skill paths are relative to the skill
+root and prefixed by the skill name, such as `pdf/SKILL.md`. Instruction and
+artifact paths are relative to the item.
+`--kind skill|instructions|artifact` filters changes and disambiguates shared
+names. With no matching changes, diff prints `up to date`.
+
+```text
+~ changed  code-review (instructions)  local:~/Developer/team-rules  6c09c94 -> 9661957
+--- a/code-review.md
++++ b/code-review.md
+@@ -2,7 +2,7 @@
+ Review checklist:
+ Read the change.
+ Check correctness.
+-Review the code.
++Review the code and tests.
+ Check tests.
+ Check edge cases.
+ Record findings.
+```
+
+Mode changes print `mode pdf/run.sh: 644 -> 755`; unchanged modes are omitted.
+Binary content prints `Binary file <path> differs`. Links print
+`link <path>: <old> -> <new>` (`none` for an absent link); directories print
+`directory <path> added` or `directory <path> removed`.
 
 `watch seen <source>` acknowledges current content. `--revision <rev>` resolves
 a Git revision to its full commit ID and can select an older commit. Well-known
@@ -150,9 +166,9 @@ content. Diff, seen, and remove accept a subscribed alias, source ID, or locatio
 Mutation confirmations use normalized source IDs:
 
 ```text
-Watching github.com/anthropics/skills from a1b2c3d.
-Marked github.com/anthropics/skills seen at 9f8e7d6.
-Stopped watching github.com/anthropics/skills; installations are unchanged.
+Watching local:~/Developer/team-rules from 6c09c94.
+Marked local:~/Developer/team-rules seen at 9661957.
+Stopped watching local:~/Developer/team-rules; installations are unchanged.
 ```
 
 Well-known confirmations omit revisions: `Watching <source ID>.` and
@@ -164,7 +180,7 @@ ignored. Scheduling checks is left to the caller.
 
 Watch baselines live in `.agent/agents.watch` for project scope or
 `~/.agents/agents.watch` for user scope. `agents.json` owns subscriptions.
-A missing subscription suggests `run 'skill watch' to list subscriptions`;
+A missing subscription suggests `Run 'skill watch' to list subscriptions`;
 an invalid revision suggests providing a Git revision that resolves to a commit
 in the watched source. Operation failures exit 1; invalid options and unknown
 subcommands exit 64, as elsewhere in the CLI.
@@ -176,12 +192,70 @@ against disk. `update <names…>` limits resolution to named skills;
 Unnamed `update` reconciles every declared skill,
 including membership changes in `all` selections.
 
-`--apply` prints old/new revisions, hashes, and full before/after file snapshots
-before core replaces targets and lock together. File output includes deletion,
-directory, symbolic-link destination, text, and binary bytes (base64). This is
-a full snapshot comparison, not a minimal unified patch. A preview can become
-stale; `--apply` resolves again and displays the content it will actually write.
-`--json --apply` is a usage error.
+Human update item lines use `+ new`, `~ changed`, `= repinned`, and `- removed`.
+Repinned means only the pin moved and content is identical. Items sort in that
+order, then by name. Revisions use seven characters; item summaries omit hashes.
+Live edit records show `none` for pins; a pinless result with no file differences
+is reported as changed.
+
+For example, `skill update` can report a pin change without a content diff:
+
+```text
+= repinned  pdf  local:~/Developer/team-rules  6c09c94 -> 9661957
+Preview only. Run again with --apply to write these changes.
+```
+
+Human diffs are for reading. JSON reports carry exact content bytes in base64.
+Tabs print verbatim; other control characters in payload lines and upstream
+text use visible escapes such as `\r`, `\x1b`, `\x00`, or `\u{202e}`.
+
+File comparisons use unified line diffs with three lines of context and
+`--- a/<path>`, `+++ b/<path>`, and `@@` hunk headers. New files use
+`--- /dev/null`; removed files use `+++ /dev/null`. Missing trailing newlines
+are marked with `\ No newline at end of file`. Empty file creation or removal
+prints only `empty file <path> added` or `empty file <path> removed`. Binary, mode,
+link, and directory changes use the same rendering as watch diffs. Watch diffs
+include executable-mode changes; skill update diffs compare content bytes,
+links, and directories.
+
+Skill content differences appear once per skill, using paths relative to its
+root prefixed by its name. Identical changes across installations are combined.
+Recipient-specific differences, such as divergent local copies, are labeled by
+recipient. Installation links moving between cached snapshots are omitted.
+Links to live edit targets and changes between link, copy, and edit modes remain
+visible, as do symbolic links within the skill content.
+
+```text
+~ changed  pdf  local:~/Developer/team-rules  6c09c94 -> 9661957
+--- a/pdf/SKILL.md
++++ b/pdf/SKILL.md
+@@ -6,7 +6,7 @@
+ PDF checklist:
+ Open the document.
+ Inspect page sizes.
+-Inspect PDF pages.
++Inspect PDF pages and metadata.
+ Check metadata.
+ Check annotations.
+ Review extracted text.
+Preview only. Run again with --apply to write these changes.
+```
+
+`--apply` prints the preview before core writes, followed by
+`Updated <skill> for <recipients>.` Removed skill recipients get
+`Removed <skill> for <recipients>.` Completions print as soon as the skill
+operation succeeds. A preview can become stale; `--apply` resolves again and
+displays the content it will actually write. `--json --apply` is a usage error.
+
+Completion lines name their content and destinations. For example,
+`skill add <source> pdf`, `skill update pdf --apply`, and `skill remove pdf`
+print:
+
+```text
+Installed pdf for claude-code, codex (link).
+Updated pdf for claude-code, codex.
+Removed pdf for claude-code, codex.
+```
 
 `install` restores exact locked pins, hashes, modes, and recipients. It does not
 resolve newer versions and takes no source argument. Unavailable pins or content
@@ -231,8 +305,29 @@ operation once. A second recovery or any other failure stops the command.
 Human-readable stdout is the default. Commands are non-interactive and never
 prompt; add, remove, init, and install perform their named actions immediately.
 Only `update --apply` writes an update. Diagnostics and recovery notices go to
-stderr. Errors are one line containing the cause and a suggested action.
-Terminal control characters in human-readable source text are replaced by spaces.
+stderr. Human paths are project-relative inside the project in project scope,
+`~/…` under HOME, and absolute otherwise. Local source IDs abbreviate HOME,
+for example `local:~/Developer/team-rules`. Installed skill listings use the
+same path rules. JSON retains full revisions, hashes, and absolute paths.
+
+Errors preserve line breaks. The first line starts with `Error: `; every
+continuation line is indented by two spaces, including Git stderr and remote
+text that itself begins with `Error:`. Trailing blank lines are dropped.
+Punctuation is added only when the error's last non-empty line lacks it.
+The capitalized remedy is its own final sentence on a separate line, indented
+by two spaces. Tabs print verbatim; all other controls within each line,
+including ESC, CR, C1, and bidi controls, use visible escapes:
+
+```text
+Error: Command failed: git fetch origin
+  fatal: Could not read from remote repository.
+  Check Git access and the source location.
+Error: Unknown command 'unknown'.
+  Run 'skill --help' for usage.
+```
+
+Human-readable source text preserves tabs and visibly escapes other control
+characters.
 
 | Code | Meaning |
 | --- | --- |

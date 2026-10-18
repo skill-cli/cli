@@ -1,7 +1,11 @@
 import AgentsCore
+import Foundation
 
 extension Terminal {
-  static func watchStatus(_ statuses: [WatchStatus], write: (String) -> Void = Terminal.write) {
+  static func watchStatus(
+    _ statuses: [WatchStatus], paths: HumanPaths = HumanPaths(),
+    write: (String) -> Void = Terminal.write
+  ) {
     if statuses.isEmpty { write("No watched sources.\n") }
     for status in statuses {
       let summary: String
@@ -16,7 +20,7 @@ extension Terminal {
       default:
         summary = "up to date"
       }
-      write("\(line(status.sourceID))  \(line(summary))\n")
+      write("\(paths.source(status.sourceID))  \(line(summary))\n")
       for item in displayOrder(status.changes) {
         let kind = item.kind == .skill ? "" : " (\(item.kind.rawValue))"
         let count = item.fileCount
@@ -26,14 +30,24 @@ extension Terminal {
     }
   }
 
-  static func watchDifferences(_ status: WatchStatus) {
+  static func watchDifferences(_ status: WatchStatus, paths: HumanPaths = HumanPaths()) {
     if status.changes.isEmpty { write("up to date\n") }
     for item in displayOrder(status.changes) {
-      write("\(watchChangeLabel(item.change))\(line(item.name)) (\(item.kind.rawValue))\n")
+      let kind = item.kind == .skill ? "" : " (\(item.kind.rawValue))"
+      let before: String? =
+        if case .revision(let value) = status.seen, item.change != .new { value } else { nil }
+      let after: String? =
+        if case .revision(let value) = status.current, item.change != .removed { value } else {
+          nil
+        }
+      write(
+        "\(watchChangeLabel(item.change).trimmingCharacters(in: .whitespaces))  \(line(item.name))\(kind)  \(paths.source(status.sourceID))  \(HumanItem.pin(revision: before)) -> \(HumanItem.pin(revision: after))\n"
+      )
       for file in item.files {
-        write("--- before/\(line(file.path))\n+++ after/\(line(file.path))\n")
-        snapshot(file.before, prefix: "-")
-        snapshot(file.after, prefix: "+")
+        fileDifference(
+          path: item.kind == .skill ? item.name + "/" + file.path : file.path,
+          before: file.before.map(HumanFileEntry.init),
+          after: file.after.map(HumanFileEntry.init), paths: paths)
       }
     }
   }
@@ -67,16 +81,4 @@ extension Terminal {
     }
   }
 
-  static func snapshot(
-    _ entry: WatchFileEntry?, prefix: String, write: (String) -> Void = Terminal.write
-  ) {
-    switch entry {
-    case nil: snapshot(nil, prefix: prefix, executable: nil, write: write)
-    case .directory: snapshot(.directory, prefix: prefix, executable: nil, write: write)
-    case .symbolicLink(let target):
-      snapshot(.symbolicLink(target), prefix: prefix, executable: nil, write: write)
-    case .file(let data, let executable):
-      snapshot(.file(data), prefix: prefix, executable: executable, write: write)
-    }
-  }
 }

@@ -75,6 +75,6 @@ struct ConventionTests {
   }
 
   @Test func diagnosticsAreSingleLineAndEscapeTerminalControls() {
-    #expect(Terminal.line("a\nb\rc\t\u{1B}[31m") == "a b c  [31m")
+    #expect(Terminal.line("a\nb\rc\t\u{1B}[31m") == "a\\nb\\rc\t\\x1b[31m")
   }
 }

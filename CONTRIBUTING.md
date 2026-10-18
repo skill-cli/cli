@@ -27,10 +27,14 @@ To compare the shared command contract with a read-only `agents` checkout:
 python3 Scripts/check-parity.py --agents-package /path/to/agents-tools/cli
 ```
 
-Build `skill` first. The runner builds `agents` under this worktree's
-`.build/agents`, uses isolated environments, and removes its `.agent/parity`
-fixtures. It compares lifecycle and watch state bytes, JSON reports, terminal
-output, and watch help across project/user scope and link/copy installations.
+Build `skill` first. The runner archives the reference checkout's HEAD and builds
+`agents` under this worktree's `.build/agents`, uses isolated environments, and
+removes its `.agent/parity` fixtures. It compares lifecycle and watch state bytes,
+JSON reports, human stdout and stderr, and watch help across project/user scope
+and link/copy installations with multiple recipients. Human comparisons normalize
+client paths and command names; install compares the skill operation's output.
+Scenarios include repins, shared diffs, controls, empty files, binary files,
+links, executable-mode changes, removals, and multiline Git diagnostics.
 
 ## Change Guidelines
 

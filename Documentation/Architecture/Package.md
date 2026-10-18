@@ -42,13 +42,20 @@ named update command for both selected and all-skill updates.
 | `Sources/CLI/Options.swift` | Scope, agent, discovery, mode, and requirement options |
 | `Sources/CLI/SkillCommands.swift` | Add, list, remove, and init commands |
 | `Sources/CLI/LifecycleCommands.swift` | Install, update options and command, doctor roots |
-| `Sources/CLI/Terminal.swift` | One recovery retry, errors, human output, snapshots, JSON encoding |
+| `Sources/CLI/Terminal.swift` | One recovery retry, errors, skill summaries, completions, JSON encoding |
+| `Sources/CLI/HumanOutput.swift` | Display paths, item markers and ordering, typed file differences |
+| `Sources/CLI/LineDiff.swift` | Unified line diffs, context hunks, empty-file and binary notices |
+| `Sources/CLI/SkillRendering.swift` | Skill-relative file grouping, cache-link filtering, recipient completions and inventory |
 | `Sources/CLI/WatchCommands.swift` | Subscription add, status, diff, seen, and removal |
-| `Sources/CLI/WatchRendering.swift` | Watch summaries, display order, and typed snapshots |
+| `Sources/CLI/WatchRendering.swift` | Watch summaries, display order, and file diffs |
 | `Sources/CLI/WatchReports.swift` | Versioned watch status and diff DTOs |
 | `Sources/CLI/JSONReports.swift` | Versioned CLI report DTOs |
 | `Tests/CLITests/CLIFixture.swift` | Isolated homes, local Git sources, subprocess runner, cleanup |
 | `Tests/CLITests/ParsingTests.swift` | Option mapping and invalid combinations |
+| `Tests/CLITests/HumanOutputTests.swift` | Unified diffs, paths, ordering, controls, and multiline diagnostics |
+| `Tests/CLITests/HumanExecutableTests.swift` | Readable output, repins, completions, and Git diagnostics |
+| `Tests/CLITests/SkillRenderingTests.swift` | Physical cache-link paths through symlinked homes |
+| `Tests/CLITests/SkillOutputExecutableTests.swift` | Shared and divergent diffs, modes, recipients, and recovery |
 | `Tests/CLITests/ConventionTests.swift` | Recovery, fixture cleanup, file snapshot encoding, terminal sanitization |
 | `Tests/CLITests/ExecutableTests.swift` | Lifecycle, help, output schemas, exits, environment isolation |
 | `Tests/CLITests/WatchParsingTests.swift` | Watch options, requirements, default status, and kind filters |
@@ -59,8 +66,10 @@ named update command for both selected and all-skill updates.
 ## Data Flow and State
 
 Commands parse options, call `SkillOperations`, then render its returned models.
-Updates provide a callback that prints full before/after snapshots before core
-commits replacements. `install` uses exact locked pins and recipients.
+Updates provide a callback that renders unified file diffs before core commits
+replacements. Human output groups identical skill changes across recipients and
+omits cache-link moves. JSON retains exact snapshots and absolute paths.
+`install` uses exact locked pins and recipients.
 
 Project state is `.agent/agents.json`, `.agent/agents.resolved`, and
 `.agent/agents.watch`; user state uses the same filenames under `~/.agents/`.
@@ -83,8 +92,8 @@ fixtures, cleaning up their own roots. Core's tests own resolver, discovery,
 artifact, storage, concurrency, and installation algorithm coverage.
 `Scripts/check-parity.py` compares lifecycle and watch behavior with a supplied
 read-only `agents` checkout, including exact declaration, lock, and baseline
-bytes. It builds the reference executable in this worktree and cleans its
-isolated fixtures.
+bytes, JSON reports, and normalized human stdout and stderr. It builds an archive
+of the reference HEAD in this worktree and cleans its isolated fixtures.
 CI requires strict formatting, an optimized build, tests, release executable
 smoke checks, and a diff check.
 

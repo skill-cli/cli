@@ -35,17 +35,20 @@ struct UpdateOptions: ParsableArguments {
   }
 
   func run(names: [String] = []) throws {
-    let results = try withRecovery {
-      try SkillOperations.updateInstalled(
+    let (results, previous) = try withRecovery {
+      let previous =
+        json ? SkillOutputInventory() : SkillOutputInventory.read(scope: location.scope)
+      let results = try SkillOperations.updateInstalled(
         scope: location.scope, skillNames: names, apply: apply,
-        beforeApply: { Terminal.differences($0) })
+        beforeApply: { Terminal.differences($0, previous: previous, paths: location.paths) })
+      return (results, previous)
     }
     if json {
       try Terminal.json(UpdateReport(scope: location.scope.rawValue, results: results))
     } else if apply {
-      Terminal.write("Applied skill update.\n")
+      Terminal.updatedSkills(results, previous: previous)
     } else {
-      Terminal.differences(results)
+      Terminal.differences(results, previous: previous, paths: location.paths)
       if results.contains(where: \.changed) {
         Terminal.write("Preview only. Run again with --apply to write these changes.\n")
       }
@@ -109,10 +112,10 @@ struct Doctor: ParsableCommand {
       try Terminal.json(report)
     } else {
       for root in reports {
-        Terminal.write("\(Terminal.line(root.root)) (\(root.scope))\n")
+        Terminal.write("\(location.paths.path(root.root)) (\(root.scope))\n")
         if root.checks.isEmpty { Terminal.write("  No problems found.\n") }
         for check in root.checks {
-          let path = check.path.map { " (\(Terminal.line($0)))" } ?? ""
+          let path = check.path.map { " (\(location.paths.path($0)))" } ?? ""
           Terminal.write(
             "  \(check.kind) \(check.status): \(Terminal.line(check.message))\(path)\n")
         }
