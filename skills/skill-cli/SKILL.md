@@ -63,7 +63,7 @@ branch when no tags exist.
 
 ```sh
 skill list --json
-skill install
+skill install --json
 skill update
 skill update <name> --json
 skill update <name> --apply
@@ -95,14 +95,17 @@ mutations immediately. Respect the user's requested scope and action.
 
 JSON reports have `schemaVersion: 1` and sorted keys. Missing optional values
 are omitted. List reports use `kind: installed|source`; update reports contain
-`changed` and per-file before/after snapshots; doctor contains `ok` and `roots`.
+`changed` and per-file before/after snapshots; install reports restored skills;
+doctor contains `ok`, `roots`, and checks with `kind: skills`.
 File snapshots use base64 for bytes and typed directory/symlink entries.
 
 Exit status is `0` for success or doctor warnings, `1` for operation failure or
 doctor errors, and `64` for usage errors. Read the one-line stderr remedy on
-failure. Recovery notices use stderr and the CLI retries a recovered transaction
-once. Read commands may fetch/cache data; interrupted-transaction recovery can
-restore files.
+failure. Read commands may fetch/cache data; doctor inspects existing state
+without fetching or writing. Pending recovery is an error check with the affected
+state path. Run `skill install --scope user` for user state or `skill install`
+in the affected project root. Mutating commands recover pending transactions,
+report on stderr, and retry once.
 
 See [the CLI reference](https://github.com/skill-cli/cli/blob/master/Documentation/Reference/CLI.md)
 for complete report schemas and options.

@@ -35,7 +35,7 @@ enum Terminal {
     case CoreError.transactionRecovered:
       action = "retry the command after other writers finish"
     case CoreError.invalidSource, CoreError.notFound:
-      action = "check the source, skill names, and paths"
+      action = "check the source, names, and paths"
     case CoreError.unsafePath:
       action = "use a path within the source directory"
     case CoreError.invalidSkill:

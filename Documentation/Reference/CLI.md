@@ -13,7 +13,7 @@ skill list [source] [--json]
 skill remove <names…>
 skill update [names…] [--apply | --json]
 skill init [name]
-skill install
+skill install [--json]
 skill doctor [--root <dir>…] [--json]
 ```
 
@@ -44,7 +44,7 @@ Examples:
 | `--full-depth` | Discover recursively beyond conventional skill directories | `add`, `list <source>` |
 | `--mode link\|copy\|edit` | How to install: link (default), copy, or edit (a live link to a local source). | `add` |
 | `--root <dir>…` | Audit these project directories read-only. Repeat for several. | `doctor` |
-| `--json` | Emit a versioned JSON report on stdout | `list`, `doctor`, update previews |
+| `--json` | Emit a versioned JSON report on stdout | `list`, `install`, `doctor`, update previews |
 
 Agents are `codex`, `claude-code`, `cursor`, `gemini-cli`, and `opencode`.
 Core also accepts `claude` and `gemini` as input aliases. Output uses canonical
@@ -138,11 +138,18 @@ Core resolves installation locations, including `CODEX_HOME`,
 `CLAUDE_CONFIG_DIR`, and `XDG_CONFIG_HOME` when applicable. User state remains
 under HOME's `.agents` directory.
 
-Read commands and previews do not write declarations, locks, or installations
-during normal operation. They may fetch/cache source data. If core recovers an
-interrupted transaction on any operation, the CLI reports recovery on stderr
-and retries that operation once. A second recovery or any other failure stops
-the command. Recovery can restore files even when triggered by a read command.
+Read commands and previews do not recover interrupted transactions or write
+declarations, locks, or installations. Doctor inspects existing state without
+fetching sources, writing caches, or creating locks. A pending transaction is
+reported as skill check `pending-recovery`. It is an error check: the state is
+inconsistent until recovery, so doctor sets `ok` to false and exits 1. Human
+output includes the affected state directory. To finish recovery, run
+`skill install --scope user` for `~/.agents`, or run `skill install` in the
+project root for that project's `.agent` directory.
+
+Commands that change a scope finish pending recovery before proceeding. When
+core reports recovery, the CLI prints a notice on stderr and retries that
+operation once. A second recovery or any other failure stops the command.
 
 ## Output and Exit Status
 
@@ -158,8 +165,9 @@ Terminal control characters in human-readable source text are replaced by spaces
 | `1` | Operation failure or a completed doctor report containing an error check |
 | `64` | Invalid usage, including unknown commands, options, or invalid option combinations |
 
-An unknown command or subcommand exits `64` with the message
-`Unknown command '<name>'`, including when `--help` follows it.
+Unknown commands and subcommands report `Unknown command '<name>'` and exit
+64 even when `--help` or `-h` comes before or after the unknown name.
+Command-path validation stops at `--`; leaf command positionals remain arguments.
 
 Doctor's `ok` means there are no error checks; warnings do not make it false.
 A failed operation emits no successful JSON report. JSON stdout contains only
@@ -180,6 +188,7 @@ schema version. Diagnostic IDs are core-defined strings, not a closed enum.
 | `list --json` | [Installed list](Schemas/installed-list.schema.json) | `schemaVersion`, `kind: "installed"`, `scope`, `skills` |
 | `list <source> --json` | [Source list](Schemas/source-list.schema.json) | `schemaVersion`, `kind: "source"`, `scope`, `source`, `skills` |
 | `update --json` | [Update](Schemas/update.schema.json) | `schemaVersion`, `scope`, `changed`, `skills` |
+| `install --json` | [Install](Schemas/install.schema.json) | `schemaVersion`, `scope`, `skills` |
 | `doctor --json` | [Doctor](Schemas/doctor.schema.json) | `schemaVersion`, `ok`, `roots` |
 
 An empty installed list:
@@ -199,3 +208,9 @@ A healthy doctor report:
 ```json
 {"schemaVersion":1,"ok":true,"roots":[{"root":"/project","scope":"project","ok":true,"checks":[]}]}
 ```
+
+Doctor checks include `kind: "skills"` alongside their IDs, severity, message,
+and optional path. `pending-recovery` is an error; other severities come from core.
+`install --json` reports restored skill rows with `name`, `agent`, `mode`, and
+absolute `path`. These definitions are CLI-owned and do not expose core's
+encoded lock objects.

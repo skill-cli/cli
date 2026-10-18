@@ -57,8 +57,9 @@ Project state is `.agent/agents.json` and `.agent/agents.resolved`; user state
 uses the same filenames under `~/.agents/`. Each scope has a `cache/` directory.
 Core owns validation, deterministic encoding, source mirrors, pinned content,
 installation paths, locking, transaction journals, and pruning. Read commands
-may populate caches. Recovery can restore a consistent generation and asks the
-CLI to retry once, with a stderr notice. See core's
+may populate caches, while doctor only inspects existing state. Mutating
+commands recover a consistent generation and retry once with a stderr notice.
+Doctor reports pending recovery as an error without changing state. See core's
 [state architecture](https://github.com/agents-tools/core/blob/master/Documentation/Architecture/State.md)
 for those invariants and [CLI reference](../Reference/CLI.md) for the command contract.
 

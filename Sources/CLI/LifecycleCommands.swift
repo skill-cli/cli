@@ -9,12 +9,15 @@ struct Install: ParsableCommand {
     abstract: "Restore skills using exact pins and recipients from the lock.")
 
   @OptionGroup var location: ScopeOptions
+  @Flag(help: "Print the versioned JSON report.") var json = false
 
   func run() throws {
     let report = try withRecovery {
       try SkillOperations.installResolvedReport(scope: location.scope)
     }
-    if report.installed.isEmpty {
+    if json {
+      try Terminal.json(InstallReport(scope: location.scope.rawValue, skills: report.installed))
+    } else if report.installed.isEmpty {
       Terminal.write("No locked skills to restore.\n")
     } else {
       Terminal.installed(report.installed)
@@ -90,17 +93,16 @@ struct Doctor: ParsableCommand {
       else {
         throw CoreError.notFound("project directory \(project.path); provide an existing --root")
       }
-      let report = try withRecovery {
-        try SkillOperations.doctor(
-          scope: location.scope, agents: agents.recipients,
-          environment: RuntimeEnvironment(
-            projectDirectory: project, homeDirectory: environment.homeDirectory,
-            environment: environment.environment))
-      }
+      let runtime = RuntimeEnvironment(
+        projectDirectory: project, homeDirectory: environment.homeDirectory,
+        environment: environment.environment)
+      let report = try SkillOperations.doctor(
+        scope: location.scope, agents: agents.recipients,
+        environment: runtime)
       reports.append(
         DoctorRoot(
           root: location.scope == .user ? environment.homeDirectory.path : project.path,
-          scope: location.scope.rawValue, report: report))
+          scope: location.scope.rawValue, report: report, environment: runtime))
     }
     let report = DoctorOutput(roots: reports)
     if json {
@@ -110,7 +112,9 @@ struct Doctor: ParsableCommand {
         Terminal.write("\(Terminal.line(root.root)) (\(root.scope))\n")
         if root.checks.isEmpty { Terminal.write("  No problems found.\n") }
         for check in root.checks {
-          Terminal.write("  \(check.status): \(Terminal.line(check.message))\n")
+          let path = check.path.map { " (\(Terminal.line($0)))" } ?? ""
+          Terminal.write(
+            "  \(check.kind) \(check.status): \(Terminal.line(check.message))\(path)\n")
         }
       }
     }

@@ -31,6 +31,9 @@
             "items": {
               "type": "object",
               "properties": {
+                "kind": {
+                  "const": "skills"
+                },
                 "id": {
                   "type": "string"
                 },
@@ -49,6 +52,7 @@
                 }
               },
               "required": [
+                "kind",
                 "id",
                 "status",
                 "message"

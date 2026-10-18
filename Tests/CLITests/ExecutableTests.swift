@@ -34,7 +34,12 @@ struct ExecutableTests {
     let roots = try #require(missing["roots"] as? [[String: Any]])
     let checks = try #require(roots.first?["checks"] as? [[String: Any]])
     #expect(checks.contains { $0["id"] as? String == "missing" })
-    try fixture.success(["install"] + scopeArguments)
+    let restored = try fixture.success(["install", "--json"] + scopeArguments).json()
+    #expect(Set(restored.keys) == ["schemaVersion", "scope", "skills"])
+    #expect(restored["schemaVersion"] as? Int == 1 && restored["scope"] as? String == scope)
+    let restoredSkills = try #require(restored["skills"] as? [[String: String]])
+    #expect(
+      restoredSkills == [["name": "demo", "agent": "codex", "mode": mode, "path": installed.path]])
     #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
     let file = installed.appendingPathComponent("SKILL.md")
     let original = try Data(contentsOf: file)
@@ -161,7 +166,7 @@ struct ExecutableTests {
     let dirtyRoots = try #require(dirty["roots"] as? [[String: Any]])
     let checks = try #require(dirtyRoots.first?["checks"] as? [[String: Any]])
     let check = try #require(checks.first)
-    #expect(Set(check.keys) == ["id", "status", "message", "path"])
+    #expect(Set(check.keys) == ["kind", "id", "status", "message", "path"])
     #expect(check["id"] as? String == "uncommitted-source")
     #expect(check["status"] as? String == "warning" && dirty["ok"] as? Bool == true)
   }
@@ -179,6 +184,61 @@ struct ExecutableTests {
       FileManager.default.fileExists(atPath: fixture.home.appendingPathComponent("SKILL.md").path))
     let existing = try fixture.run(["init"], directory: fixture.home)
     #expect(existing.status == 1 && existing.stderr.contains("already exists"))
+  }
+
+  @Test(arguments: ["project", "user"], ["transaction.json", "transaction.new"])
+  func doctorLeavesPendingRecoveryUnchanged(scope: String, journal: String) throws {
+    let fixture = try CLIFixture()
+    let state = fixture.state("", scope: scope)
+    let cache = fixture.state("cache/content", scope: scope)
+    try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
+    let files = [
+      fixture.state(journal, scope: scope), fixture.state("agents.json", scope: scope),
+      fixture.state("agents.resolved", scope: scope), cache.appendingPathComponent("snapshot"),
+    ]
+    for (file, content) in zip(
+      files,
+      [
+        Data("{}".utf8), Data("incomplete declaration".utf8), Data("incomplete lock".utf8),
+        Data([0, 255]),
+      ])
+    {
+      try content.write(to: file)
+    }
+    let paths = try FileManager.default.subpathsOfDirectory(atPath: state.path).sorted()
+    let before = try files.map { try Data(contentsOf: $0) }
+    let remedy =
+      scope == "user"
+      ? "run 'skill install --scope user' to finish recovery"
+      : "run 'skill install' in '\(fixture.project.path)' to finish recovery"
+    for json in [false, true] {
+      let result = try fixture.run(["doctor", "--scope", scope] + (json ? ["--json"] : []))
+      #expect(result.status == 1 && result.stderr.isEmpty)
+      if json {
+        let report = try result.json()
+        #expect(Set(report.keys) == ["schemaVersion", "ok", "roots"])
+        #expect(report["ok"] as? Bool == false)
+        let roots = try #require(report["roots"] as? [[String: Any]])
+        #expect(roots.count == 1 && roots.first?["ok"] as? Bool == false)
+        let checks = try #require(roots.first?["checks"] as? [[String: Any]])
+        #expect(checks.count == 1)
+        #expect(checks.compactMap { $0["kind"] as? String } == ["skills"])
+        #expect(
+          checks.compactMap { $0["id"] as? String } == ["pending-recovery"])
+        for check in checks {
+          #expect(Set(check.keys) == ["kind", "id", "status", "message", "path"])
+          #expect(check["status"] as? String == "error")
+          #expect((check["message"] as? String)?.contains(remedy) == true)
+          #expect(check["path"] as? String == state.path)
+        }
+      } else {
+        #expect(result.stdout.contains("skills error: Transaction recovery is pending"))
+        #expect(result.stdout.contains(remedy))
+        #expect(result.stdout.contains("(\(state.path))"))
+      }
+      #expect(try FileManager.default.subpathsOfDirectory(atPath: state.path).sorted() == paths)
+      #expect(try files.map { try Data(contentsOf: $0) } == before)
+    }
   }
 
   @Test func previewDescribesEntryTypesAndDeletions() throws {
@@ -243,6 +303,43 @@ struct ExecutableTests {
     #expect(result.stdout.contains("--version") == isRoot)
   }
 
+  @Test func commandsAcceptOptionsAndPositionals() throws {
+    let fixture = try CLIFixture()
+    try fixture.skill("unknown")
+    try fixture.commit()
+    let listing = try fixture.success([
+      "list", "--json", "--path", "skills", fixture.source.path,
+      "--scope=user", "--full-depth",
+    ]).json()
+    let skills = try #require(listing["skills"] as? [[String: Any]])
+    #expect(skills.compactMap { $0["name"] as? String } == ["unknown"])
+    try fixture.success([
+      "add", "--scope", "user", "--agent", "codex", "--mode=copy",
+      fixture.source.path, "unknown",
+    ])
+    #expect(
+      FileManager.default.fileExists(
+        atPath: fixture.home.appendingPathComponent(".agents/skills/unknown/SKILL.md").path))
+  }
+
+  @Test func helpStopsCommandValidationAtTerminator() throws {
+    let fixture = try CLIFixture()
+    #expect(try fixture.success(["--help", "--", "unknown"]).stdout.contains("USAGE:"))
+  }
+
+  @Test(arguments: [["--scope", "user"], ["--scope=user"]])
+  func helpOptionValuesAreNotCommands(_ options: [String]) throws {
+    let result = try CLIFixture().run(["help", "list"] + options)
+    #expect(result.status == 64 && result.stdout.isEmpty)
+    #expect(result.stderr.contains("Unknown option '--scope'"))
+  }
+
+  @Test func emptyInstallJSON() throws {
+    let result = try CLIFixture().success(["install", "--json"]).json()
+    #expect(Set(result.keys) == ["schemaVersion", "scope", "skills"])
+    #expect((result["skills"] as? [Any])?.isEmpty == true)
+  }
+
   @Test func rootHelpExamples() throws {
     let fixture = try CLIFixture()
     let result = try fixture.success(["--help"])
@@ -305,6 +402,9 @@ struct ExecutableTests {
 
   @Test(arguments: [
     ["unknown"], ["unknown", "--help"], ["help", "unknown"], ["remove"],
+    ["--help", "unknown"], ["-h", "unknown"], ["unknown", "-h"],
+    ["--help", "-"], ["-", "-h"], ["help", "unknown", "--help"],
+    ["help", "list", "--scope=user", "unknown"], ["--version", "--help", "unknown"],
     ["install", "--agent", "codex"], ["install", "--mode", "copy"],
     ["add", ".", "--exact", "bad"], ["update", "--json", "--apply"],
     ["add", ".", "--version"],
@@ -320,6 +420,11 @@ struct ExecutableTests {
     #expect(result.stdout.isEmpty && result.stderr.hasPrefix("Error:"))
     #expect(result.stderr.split(separator: "\n").count == 1)
     #expect(result.stderr.contains("skill --help"))
+    if arguments.contains("unknown") {
+      #expect(result.stderr.contains("Unknown command 'unknown'"))
+    } else if arguments.contains("-") {
+      #expect(result.stderr.contains("Unknown command '-'"))
+    }
   }
 
   @Test func operationFailureAndEnvironmentIsolation() throws {
