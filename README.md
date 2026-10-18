@@ -49,9 +49,9 @@ Project scope uses the current directory and stores `agents.json`,
 `agents.resolved`, and `cache/` under `.agent/`. `--scope user` uses
 `~/.agents/`. Keep state and caches out of version control.
 
-Add defaults to `link` mode and the recipients already recorded for the skill
-or source, then declaration defaults, initially Codex and Claude Code. Repeat
-`--agent` to select several recipients. `link` and `copy` install committed,
+`add` installs in `link` mode for the recipients already recorded for that
+skill or source, otherwise for the declaration's default agents (initially
+Codex and Claude Code). Repeat `--agent` to choose recipients. `link` and `copy` install committed,
 pinned content from Git sources; `edit` links a live local directory.
 An unnamed add installs the only discovered skill or prints choices when
 there are several. `--all` follows future membership changes on update.
@@ -65,8 +65,8 @@ for options, JSON schemas, errors, and exit codes.
 0.3 uses the shared `agents.json` declaration and `agents.resolved` lock in
 project `.agent/` or user `~/.agents/`. It does not read 0.2 state files.
 Add sources again with `skill add`; skill names are positional arguments.
-The old watch and review commands are removed. Watch will follow separately
-once it is available in `agents`.
+The 0.2 watch and review commands are removed; watch returns as a
+subscription in a later 0.3 change.
 
 ## Bundled Companion Skill
 
