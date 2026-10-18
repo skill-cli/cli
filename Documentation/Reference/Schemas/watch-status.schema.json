@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Watch status, version 1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "scope": {
+      "enum": [
+        "project",
+        "user"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "scope",
+    "sources"
+  ],
+  "$defs": {
+    "source": {
+      "type": "object",
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "description": "Normalized source ID."
+        },
+        "seen": {
+          "$ref": "#/$defs/baseline"
+        },
+        "current": {
+          "$ref": "#/$defs/baseline"
+        },
+        "commitCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Present for Git sources only."
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      },
+      "required": [
+        "alias",
+        "source",
+        "seen",
+        "current",
+        "changes"
+      ]
+    },
+    "baseline": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "revision": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$"
+            }
+          },
+          "required": [
+            "revision"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "artifacts": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          },
+          "required": [
+            "artifacts"
+          ]
+        }
+      ]
+    },
+    "item": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "skill",
+            "instructions",
+            "artifact"
+          ]
+        },
+        "change": {
+          "enum": [
+            "new",
+            "changed",
+            "removed"
+          ]
+        },
+        "oldPath": {
+          "type": "string",
+          "description": "Path relative to the source search root before the change."
+        },
+        "newPath": {
+          "type": "string",
+          "description": "Path relative to the source search root after the change."
+        },
+        "oldDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "newDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "name",
+        "kind",
+        "change",
+        "fileCount"
+      ]
+    }
+  }
+}

@@ -42,9 +42,15 @@ struct AddAgentOptions: ParsableArguments {
   }
 }
 
-struct DiscoveryOptions: ParsableArguments {
+struct SourcePathOptions: ParsableArguments {
   @Option(help: "Search this subdirectory of the source.")
   var path: String?
+}
+
+struct DiscoveryOptions: ParsableArguments {
+  @OptionGroup var sourcePath: SourcePathOptions
+
+  var path: String? { sourcePath.path }
 
   @Flag(help: "Search all source directories recursively.")
   var fullDepth = false

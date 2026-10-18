@@ -66,9 +66,11 @@ final class CLIFixture {
     return result
   }
 
-  func git(_ arguments: [String]) throws {
+  @discardableResult
+  func git(_ arguments: [String]) throws -> CLIResult {
     let result = try process(URL(fileURLWithPath: "/usr/bin/git"), arguments, directory: source)
     try #require(result.status == 0, "git \(arguments): \(result.stderr)")
+    return result
   }
 
   func commit() throws {
@@ -89,6 +91,22 @@ final class CLIFixture {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     try "---\nname: \(name)\ndescription: Fixture skill\n---\n\n\(body)\n".write(
       to: directory.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
+  }
+
+  func instruction(
+    _ name: String = "canonical-artifacts", heading: String = "Canonical Artifacts",
+    body: String = "Original instructions", container: String = "instructions"
+  ) throws {
+    let directory = source.appendingPathComponent(container)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try Data("# \(heading)\n\n\(body)\n".utf8).write(
+      to: directory.appendingPathComponent(name + ".md"))
+  }
+
+  func declaration(scope: String = "project") throws -> [String: Any] {
+    try #require(
+      JSONSerialization.jsonObject(with: Data(contentsOf: state("agents.json", scope: scope)))
+        as? [String: Any])
   }
 
   func state(_ name: String, scope: String = "project") -> URL {

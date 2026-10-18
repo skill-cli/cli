@@ -21,6 +21,17 @@ Strict formatting must produce zero findings. CI runs the release build on
 every pull request. Executable tests create local Git sources and isolated
 homes; subprocesses use an explicit environment and fixtures clean up on exit.
 
+To compare the shared command contract with a read-only `agents` checkout:
+
+```sh
+python3 Scripts/check-parity.py --agents-package /path/to/agents-tools/cli
+```
+
+Build `skill` first. The runner builds `agents` under this worktree's
+`.build/agents`, uses isolated environments, and removes its `.agent/parity`
+fixtures. It compares lifecycle and watch state bytes, JSON reports, terminal
+output, and watch help across project/user scope and link/copy installations.
+
 ## Change Guidelines
 
 - Keep parsing, terminal output, recovery presentation, and exit codes in
