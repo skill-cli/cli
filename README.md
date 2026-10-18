@@ -1,9 +1,31 @@
-# skill-cli
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/skill-cli/cli/master/Documentation/Assets/Logo.png">
+    <img src="Documentation/Assets/Logo-dark.png" width="160" alt="skill logo">
+  </picture>
+</p>
+
+<h1 align="center">skill</h1>
+
+<p align="center">
+  Install, restore and watch agent skills from the command line.
+</p>
+
+<p align="center">
+  <a href="https://github.com/skill-cli/cli/actions/workflows/ci.yml"><img src="https://github.com/skill-cli/cli/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Swift-6.3%2B-F05138" alt="Swift 6.3+">
+  <img src="https://img.shields.io/badge/platforms-macOS%2013%2B-lightgrey" alt="Platforms: macOS 13+">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
+</p>
 
 `skill` manages agent skills from declared sources. Add skills once, restore
 exact locked content with `install`, and preview upstream changes before
 applying an update. It supports Codex, Claude Code, Cursor, Gemini CLI, and
 OpenCode through [agents-tools/core](https://github.com/agents-tools/core).
+
+<p align="center">
+  <img src="Documentation/Assets/Demo.svg" width="630" alt="Terminal session: skill adds three skills, watches their source, reports an upstream change, and applies it">
+</p>
 
 This is the skills edition of [agents](https://github.com/agents-tools/cli).
 `skill add|list|remove|update|init` matches `agents skills` commands;
