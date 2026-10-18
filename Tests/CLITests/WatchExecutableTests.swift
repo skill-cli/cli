@@ -216,19 +216,27 @@ struct WatchExecutableTests {
       #expect(result.status == 1 && result.stdout.isEmpty)
       #expect(result.stderr.contains("Run 'skill watch' to list subscriptions"))
     }
+  }
+
+  @Test(arguments: [
+    ("missing-revision", "Git could not read a revision from"),
+    ("--all", "Invalid source: invalid watch revision."),
+  ])
+  func unresolvedRevisionsHaveRemedies(_ revision: String, _ message: String) throws {
+    let fixture = try CLIFixture()
     try fixture.skill()
     try fixture.commit()
     try fixture.success(["watch", "add", fixture.source.path])
     let baseline = try Data(contentsOf: fixture.state("agents.watch"))
-    for revision in ["missing-revision", "--all"] {
-      let result = try fixture.run(["watch", "seen", "source", "--revision=\(revision)"])
-      #expect(result.status == 1 && result.stdout.isEmpty)
-      #expect(result.stderr.split(separator: "\n").dropFirst().allSatisfy { $0.hasPrefix("  ") })
-      #expect(
-        result.stderr.hasSuffix(
-          "\n  Provide a Git revision that resolves to a commit in the watched source.\n"))
-      #expect(try Data(contentsOf: fixture.state("agents.watch")) == baseline)
-    }
+    let result = try fixture.run(["watch", "seen", fixture.source.path, "--revision=\(revision)"])
+    #expect(result.status == 1 && result.stdout.isEmpty)
+    #expect(result.stderr.hasPrefix("Error: \(message)"))
+    #expect(result.stderr.split(separator: "\n").dropFirst().allSatisfy { $0.hasPrefix("  ") })
+    #expect(!result.stderr.contains("cache/"))
+    #expect(
+      result.stderr.hasSuffix(
+        "\n  Provide a Git revision that resolves to a commit in the watched source.\n"))
+    #expect(try Data(contentsOf: fixture.state("agents.watch")) == baseline)
   }
 
   @Test(arguments: ["add", "seen", "remove"])

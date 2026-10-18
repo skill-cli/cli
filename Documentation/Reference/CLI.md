@@ -325,6 +325,16 @@ Error: Unknown command 'unknown'.
   Run 'skill --help' for usage.
 ```
 
+A directory without a Git repository produces a Git failure and exits 1:
+
+```console
+$ mkdir -p "$HOME/not-a-repository"
+$ skill add "$HOME/not-a-repository" --all
+Error: Git could not clone ~/not-a-repository.
+  fatal: repository '~/not-a-repository' does not exist.
+  Check Git access and the source location.
+```
+
 Human-readable source text preserves tabs and visibly escapes other control
 characters.
 

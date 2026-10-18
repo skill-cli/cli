@@ -5,6 +5,12 @@ import Testing
 @testable import CLI
 
 struct HumanOutputTests {
+  @Test func nonGitProcessFailuresGetTheGenericRemedy() {
+    #expect(
+      Terminal.failureRemedy(CoreError.commandFailed("tar -xf archive.tar"), command: Install())
+        == "check the command arguments and filesystem permissions")
+  }
+
   private func diff(_ before: String?, _ after: String?) -> String {
     LineDiff.render(
       before: before.map { Data($0.utf8) }, after: after.map { Data($0.utf8) }, path: "rules.md")
@@ -143,12 +149,11 @@ struct HumanOutputTests {
   }
 
   @Test func multilineErrorsIndentEveryContinuation() {
-    let error = CoreError.commandFailed(
-      "git fetch origin\nfatal: Could not read from remote repository.\n\nError: remote text\n\n")
+    let message =
+      "Git could not fetch https://example.invalid/skills.git.\nfatal: Could not read from remote repository.\n\nError: remote text\n\n"
     #expect(
-      Terminal.formatError(
-        String(describing: error), remedy: Terminal.failureRemedy(error, command: Add()))
-        == "Error: Command failed: git fetch origin\n  fatal: Could not read from remote repository.\n  \n  Error: remote text.\n  Check Git access and the source location.\n"
+      Terminal.formatError(message, remedy: "check Git access and the source location")
+        == "Error: Git could not fetch https://example.invalid/skills.git.\n  fatal: Could not read from remote repository.\n  \n  Error: remote text.\n  Check Git access and the source location.\n"
     )
   }
 
