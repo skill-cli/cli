@@ -321,9 +321,6 @@ by two spaces. Tabs print verbatim; all other controls within each line,
 including ESC, CR, C1, and bidi controls, use visible escapes:
 
 ```text
-Error: Command failed: git fetch origin
-  fatal: Could not read from remote repository.
-  Check Git access and the source location.
 Error: Unknown command 'unknown'.
   Run 'skill --help' for usage.
 ```
