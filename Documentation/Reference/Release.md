@@ -38,11 +38,13 @@ confirm it equals `origin/master`. Confirm CI passed on this exact commit,
 including strict format, release build, tests, and smoke checks.
 
 ```sh
-unset checked_commit checked_version &&
+unset checked_commit checked_version verified_tag &&
   git fetch origin --tags &&
   release_commit=$(git rev-parse HEAD) &&
-  test "$release_commit" = "$(git rev-parse origin/master)" &&
-  test -z "$(git status --porcelain)" &&
+  master_commit=$(git rev-parse origin/master) &&
+  test "$release_commit" = "$master_commit" &&
+  worktree_status=$(git status --porcelain) &&
+  test -z "$worktree_status" &&
   swift build &&
   env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test &&
   swift build -c release &&
@@ -61,13 +63,17 @@ different proposed version. Immediately confirm that
 with the intended version.
 
 ```sh
-unset checked_version &&
+unset checked_version verified_tag &&
   version=X.Y.Z &&
   tag="v$version" &&
-  test "$(.build/release/skill --version)" = "skill $version" &&
-  test -z "$(git tag --list "$tag")" &&
-  test -z "$(git status --porcelain)" &&
-  test "$(git rev-parse HEAD)" = "$release_commit" &&
+  actual=$(.build/release/skill --version) &&
+  test "$actual" = "skill $version" &&
+  existing=$(git tag --list "$tag") &&
+  test -z "$existing" &&
+  worktree_status=$(git status --porcelain) &&
+  test -z "$worktree_status" &&
+  head=$(git rev-parse HEAD) &&
+  test "$head" = "$release_commit" &&
   checked_version=$version
 ```
 
@@ -85,7 +91,8 @@ unset verified_tag &&
   test "${checked_version:-}" = "$version" &&
   git tag -s "$tag" "$release_commit" -m "Release $version" &&
   git verify-tag "$tag" &&
-  test "$(git rev-parse "$tag^{commit}")" = "$release_commit" &&
+  tagged_commit=$(git rev-parse "$tag^{commit}") &&
+  test "$tagged_commit" = "$release_commit" &&
   verified_tag=$tag
 ```
 
@@ -93,7 +100,9 @@ Set `notes_file` to the prepared release notes. Push and verify the remote
 annotated tag's peeled commit before creating the GitHub release:
 
 ```sh
-test "${verified_tag:-}" = "$tag" &&
+test "${checked_commit:-}" = "$release_commit" &&
+  test "${checked_version:-}" = "$version" &&
+  test "${verified_tag:-}" = "$tag" &&
   git push origin "refs/tags/$tag" &&
   remote_ref=$(git ls-remote --exit-code origin "refs/tags/$tag^{}") &&
   test "${remote_ref%%[[:space:]]*}" = "$release_commit" &&
@@ -121,6 +130,7 @@ export HOMEBREW_NO_INSTALL_FROM_API=1 &&
   formula_name=skill-cli &&
   brew tap "$test_tap" "$tap_checkout" &&
   test_tap_checkout=$(brew --repository "$test_tap") &&
+  mkdir -p "$test_tap_checkout/Formula" &&
   cp "Formula/$formula_name.rb" "$test_tap_checkout/Formula/$formula_name.rb" &&
   cmp "Formula/$formula_name.rb" "$test_tap_checkout/Formula/$formula_name.rb" &&
   brew info --json=v2 "$test_tap/$formula_name"
@@ -134,8 +144,10 @@ validation:
 brew fetch --force --build-from-source "$test_tap/$formula_name" &&
   brew install --build-from-source "$test_tap/$formula_name" &&
   brew test "$test_tap/$formula_name" &&
-  test "$(skill --version)" = "skill $version" &&
-  test "$(swift-skill --version)" = "skill $version"
+  actual=$(skill --version) &&
+  test "$actual" = "skill $version" &&
+  actual=$(swift-skill --version) &&
+  test "$actual" = "skill $version"
 ```
 
 Verify both installed `skill --version` and `swift-skill --version` print
