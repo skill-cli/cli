@@ -80,10 +80,13 @@ enum Terminal {
       action = "provide a Git revision that resolves to a commit in the watched source"
     case CoreError.invalidSource("well-known subscriptions do not accept Git revisions"):
       action = "omit --revision to mark the current index seen"
-    case CoreError.commandFailed(let message)
-    where (command as? SeenWatch)?.revision != nil
-      && message.contains(" rev-parse --verify --end-of-options "):
-      action = "provide a Git revision that resolves to a commit in the watched source"
+    case let error as GitError:
+      switch error.operation {
+      case .resolveRevision:
+        action = "provide a Git revision that resolves to a commit in the watched source"
+      default:
+        action = "check Git access and the source location"
+      }
     case CoreError.invalidSource, CoreError.notFound:
       action = "check the source, names, and paths"
     case CoreError.unsafePath:
