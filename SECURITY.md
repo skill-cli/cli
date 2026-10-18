@@ -22,5 +22,4 @@ Security review is especially important for:
 - filesystem writes
 - symlink handling
 - agent prompt installation
-- watch review state
 - install lock handling

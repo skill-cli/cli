@@ -1,269 +1,108 @@
 ---
 name: skill-cli
-description: Manage agent skills with the skill CLI. Use when a user asks how to install, restore, list, update, remove, watch, review, or migrate skills with the `skill` command; needs help choosing project versus user scope, selecting agents, using local or remote skill sources, understanding `skills.resolved`, or replacing a direct-directory installer workflow.
-metadata:
-  short-description: Use the skill CLI to manage agent skills
-  requires:
-    bins: ["skill"]
-  cliHelp: "skill --help"
+description: Use the skill CLI to add, list, restore, update, remove, initialize, or diagnose agent skills from declared sources in project or user scope.
 ---
 
-# skill-cli
+# skill CLI
 
-Use the installed `skill` executable to manage agent skills. This is the
-companion skill for `skill-cli`, the Swift-native CLI that installs, restores,
-lists, updates, removes, watches, and reviews skill sources.
+Use the installed `skill` executable (`swift-skill` is equivalent) to manage
+skills for Codex, Claude Code, Cursor, Gemini CLI, and OpenCode. Run
+`skill --version` and `skill <command> --help` to inspect the available build.
+These instructions describe the 0.3 command surface.
 
-## Operating Rules
+## Choose Scope and Recipients
 
-- Use `skill` commands for skill lifecycle operations.
-- Do not write directly to an agent-specific skills directory.
-- Prefer user scope when the user asks for personal or agent-wide skills.
-- Use project scope when the user asks for repo-local or workspace-local skills.
-- Target Codex when the user does not name an agent.
-- Pass explicit agents with `--agent`.
-- Use `--agent *` only when the user explicitly asks to target every supported
-  agent.
-- Use `--all` only when the user explicitly asks to install, list, update, or
-  remove all matching skills.
+Project scope is the default and uses the current directory. Change directory
+to the intended project before running commands. Use `--scope user` for HOME's
+shared state. Declaration and lock files are `agents.json` and `agents.resolved`
+in project `.agent/` or user `~/.agents/`; core owns their validation and writes.
+Instruction declarations, locked records, and target files stay untouched.
 
-## Verify CLI
+For add, repeat `--agent` to choose recipients, for example
+`--agent codex --agent claude-code`. Omission preserves recipients already
+recorded for the skill or source, then uses declaration defaults, initially
+Codex and Claude Code. List, remove, and doctor default to all recipients.
+Install and update use recorded recipients and modes without overrides.
 
-Before changing skill state, check that the CLI is available:
+## Discover and Add
 
-```bash
-skill --version
-skill --help
-skill doctor --json
-```
-
-If `skill` is missing, ask the user to install it first:
-
-```bash
-brew install skill-cli/tap/skill-cli
-```
-
-## Scopes And Agents
-
-Use project scope for repo-local installs:
-
-```bash
-skill add <source> --scope project --agent codex --skill <skill-name>
-skill install --scope project
-skill list --scope project
-```
-
-Use user scope for personal installs shared across workspaces:
-
-```bash
-skill add <source> --scope user --agent codex --skill <skill-name>
-skill install --scope user
-skill list --scope user --agent codex
-```
-
-Supported agents are `codex`, `claude-code`, `cursor`, `gemini-cli`, and
-`opencode`. Use `--agent *` only on explicit request.
-
-## Sources
-
-Prefer explicit sources:
-
-```bash
-skill list <owner>/<repo>
-skill list <owner>/<repo> --path <path/to/skill-or-container>
-skill list <local-path> --path <path/to/skill-or-container>
-```
-
-Use SwiftPM-style requirements when the user needs a non-default revision:
-
-```bash
-skill add <owner>/<repo> --branch <name> --skill <skill-name>
-skill add <owner>/<repo> --revision <sha> --skill <skill-name>
-skill add <owner>/<repo> --from <version> --skill <skill-name>
-```
-
-Typed shorthand is also valid:
-
-```bash
-skill add owner/repo@branch:main@skill:name
-```
-
-## List
-
-List installable skills from a source:
-
-```bash
-skill list <source>
-```
-
-List OpenAI curated skills:
-
-```bash
-skill list openai/skills --path skills/.curated
-```
-
-Use JSON only when a scriptable result is needed:
-
-```bash
+```sh
 skill list <source> --json
+skill list <source> --path skills --full-depth
+skill add <source> <name> [another-name]
+skill add <source> --all --agent codex --scope user
+skill add <source> <name> --branch main --mode copy
+skill add /path/to/local/skills <name> --mode edit
 ```
 
-List managed installed skills:
+A source can be a local path, Git URL or shorthand, well-known HTTP source,
+or declared source alias. With no names, add installs the only discovered skill
+or prints choices when there are several. `--all` selects current and future
+members on unnamed updates. Names and `--all` cannot be combined.
 
-```bash
-skill list
-skill list --scope user --agent codex
-skill list --scope user --agent codex --skill <skill-name>
+`link` is the default and links pinned cache content. `copy` installs pinned
+copies. Local sources in these modes must be Git repositories; only committed
+content is installed. `edit` links a live local directory and accepts no
+requirement. `--path` narrows source discovery; `--full-depth` searches recursively.
+
+Choose at most one requirement form:
+
+```sh
+skill add <source> --branch main
+skill add <source> --revision <commit>
+skill add <source> --exact 1.2.3
+skill add <source> --from 1.2.3
+skill add <source> --up-to-next-minor-from 1.2.3
+skill add <source> --from 1.2.3 --to 1.8.0
 ```
 
-Scan the filesystem, including unmanaged skills:
+Without a requirement, core selects the latest version tag or the default
+branch when no tags exist.
 
-```bash
-skill list --all --scope user --agent codex
-skill list --all --scope user --agent codex --skill <skill-name>
+## Maintain Skills
+
+```sh
+skill list --json
+skill install
+skill update
+skill update <name> --json
+skill update <name> --apply
+skill remove <name> --agent codex
+skill remove <name> [another-name]
+skill init my-skill
+skill doctor --json
+skill doctor --root /path/to/project-a /path/to/project-b --json
 ```
 
-If the source contains multiple skills and the user did not name one, list the
-candidates and ask which ones to install.
+- `list` reports managed installations, including missing or drifted ones.
+- `install` restores exact locked content and leaves lock bytes unchanged.
+  It takes no source, recipient, or mode override.
+- `update` previews against disk. Names limit the selection; omission reconciles
+  every declared skill and membership of `--all` sources. Use `--apply` when
+  the user's task authorizes writing the update. It resolves again and prints
+  differences before replacing files. `--json` is for previews only.
+- `remove` requires names. An agent filter removes only those recipients;
+  removing an `--all` member records an exclusion against reinstallation.
+- `init` creates a named directory and `SKILL.md`, or `SKILL.md` in the current
+  directory when unnamed. Existing files cause an error.
+- `doctor` reports installation and source problems. `--root` audits explicit
+  projects and cannot combine with `--scope user`.
 
-## Add
+Commands never prompt. Add, install, remove, and init perform their named
+mutations immediately. Respect the user's requested scope and action.
 
-Add or change a skill dependency and materialize it for the selected scope and
-agents:
+## Interpret Results
 
-```bash
-skill add <source> --scope user --agent codex --skill <skill-name>
-```
+JSON reports have `schemaVersion: 1` and sorted keys. Missing optional values
+are omitted. List reports use `kind: installed|source`; update reports contain
+`changed` and per-file before/after snapshots; doctor contains `ok` and `roots`.
+File snapshots use base64 for bytes and typed directory/symlink entries.
 
-Install an OpenAI curated skill:
+Exit status is `0` for success or doctor warnings, `1` for operation failure or
+doctor errors, and `64` for usage errors. Read the one-line stderr remedy on
+failure. Recovery notices use stderr and the CLI retries a recovered transaction
+once. Read commands may fetch/cache data; interrupted-transaction recovery can
+restore files.
 
-```bash
-skill add openai/skills --path skills/.curated --scope user --agent codex --skill <skill-name>
-```
-
-Install from a repository path:
-
-```bash
-skill add <owner>/<repo> --path <path/to/skill-or-container> --scope user --agent codex --skill <skill-name>
-```
-
-Install from a local checkout:
-
-```bash
-skill add <path> --path <path/to/skill-or-container> --scope user --agent codex --skill <skill-name>
-```
-
-Use editable local install mode only when developing a skill from a local
-source checkout:
-
-```bash
-skill add <path> --path <path/to/skill-or-container> --scope user --agent codex --skill <skill-name> --mode edit
-```
-
-`--mode edit` creates a live canonical symlink to the local source skill
-directory, with agent projections linked through that canonical entry. It is not
-valid for remote sources, pinned source requirements, or watch installs. For
-normal published or fixed installs, use the default `link` mode or explicit
-`--mode copy`.
-
-Install all skills in a source or container only when requested:
-
-```bash
-skill add <source> --path <path/to/container> --scope user --agent codex --all
-```
-
-## Install
-
-Restore managed installs from resolved state:
-
-```bash
-skill install --scope user
-```
-
-This is the equivalent of materializing the selected scope's resolved skill
-state into canonical skill directories and agent projections.
-
-## Doctor
-
-Diagnose install health before hand-editing anything:
-
-```bash
-skill doctor --scope user --agent codex --json
-```
-
-Use doctor output to identify missing installs, broken links, missing local
-sources, copy drift, fallback copies, and unmanaged installed-only skills.
-
-## Update
-
-Check managed updates without applying them:
-
-```bash
-skill update --scope user
-```
-
-Apply an update for a named skill:
-
-```bash
-skill update <skill-name> --scope user --apply
-```
-
-Use `--all` only when the user explicitly asks to update every managed skill.
-
-## Remove
-
-Remove a managed skill for Codex:
-
-```bash
-skill remove <skill-name> --scope user --agent codex
-```
-
-Remove for every recorded agent only when requested:
-
-```bash
-skill remove <skill-name> --scope user --agent *
-```
-
-## Watch And Review
-
-Use watch mode only when the user asks for managed source review or reviewed
-source updates:
-
-```bash
-skill add <source> --watch-only --scope user --skill <skill-name>
-skill add <source> --watch --scope user --skill <skill-name>
-skill diff <source> --watch --path <path/to/skill>
-skill review check <source> --watch --path <path/to/skill>
-skill review done <source> --watch --path <path/to/skill> --note "reviewed"
-skill update <source> --from-watch --scope user --apply
-```
-
-Watch state is CLI-owned. Do not hand-edit watch state files unless the user
-explicitly asks for low-level repair and the file format has been inspected.
-
-## State Model
-
-- Resolved state records source pins, selected skills, install targets, and
-  content hashes.
-- Project scope uses project-local resolved state and `.agents/skills`.
-- User scope uses user resolved state and canonical `~/.agents/skills`.
-- Agent-specific projections are derived install surfaces, not source state.
-- `skill install` restores from resolved state when files were deleted or when
-  a new machine needs to materialize existing pins.
-
-## Communication
-
-- Before changing skill state, state the exact source, scope, agent, and
-  selected skill names.
-- After a successful install, update, restore, or remove, tell the user that
-  Codex may need a restart or new session to pick up changed skills.
-- If a command fails, report the exact command and the relevant error. Do not
-  hide retries or silently switch to direct filesystem edits.
-- If the user asks for an unsupported command, explain the supported `skill`
-  command that matches the intent instead.
-
-## Boundaries
-
-This skill manages skill files through `skill`. It does not manage Codex
-plugins, MCP servers, Homebrew formula release, GitHub releases, App Store
-submissions, or package-manager installation of third-party CLI binaries.
+See [the CLI reference](https://github.com/skill-cli/cli/blob/master/Documentation/Reference/CLI.md)
+for complete report schemas and options.

@@ -1,153 +1,100 @@
 # skill-cli
 
-A native `skill` CLI for installing and watching agent skills.
+`skill` manages agent skills from declared sources. Add skills once, restore
+exact locked content with `install`, and preview upstream changes before
+applying an update. It supports Codex, Claude Code, Cursor, Gemini CLI, and
+OpenCode through [agents-tools/core](https://github.com/agents-tools/core).
 
-The implementation is scoped to Codex, Claude Code, Cursor, Gemini CLI, and
-OpenCode.
+This is the skills edition of [agents](https://github.com/agents-tools/cli).
+`skill add|list|remove|update|init` matches `agents skills` commands;
+`skill install|update|doctor` runs the shared skill operations. Instruction
+selections, locked instruction records, and target files remain untouched.
 
-## Requirements
+## Install
 
-- Swift 6.3 or newer
-- macOS 13 or newer
+Install the latest stable release from the Homebrew tap:
 
-## Build
-
-```bash
-swift build
-swift test
+```sh
+brew install skill-cli/tap/skill-cli
+skill --help
 ```
 
-From a source checkout, `swift run` is the development equivalent of the
-installed `skill` executable:
+For a development build of `master`, use:
 
-```bash
-swift run skill --help
-swift run skill list
-swift run skill list --all
-swift run skill add <source> --mode copy
-swift run skill add <local-source> --mode edit
-swift run skill doctor --json
-swift run skill install
-```
-
-## Install CLI
-
-Install from the Homebrew tap:
-
-```bash
+```sh
 brew install --HEAD skill-cli/tap/skill-cli
-skill --help
 ```
 
-The tap formula installs the main executable as `skill` and also provides the
-Swift-prefixed executable `swift-skill`.
+The tap provides `skill` and `swift-skill`. Use either executable directly;
+`swift skill` depends on the active Swift driver's external-command dispatch.
+See the [tap documentation](https://github.com/skill-cli/homebrew-tap#readme)
+for packaging and channel details. This checkout documents the 0.3 command
+surface; the stable tap may still distribute 0.2 until 0.3 is released.
 
-Use these installed entrypoints for portable CLI usage:
+## Usage
 
-```bash
-skill --help
-swift-skill --help
-```
-
-`swift-skill` is an executable name, not a separate root command. The spelling
-`swift skill` is only a Swift driver convenience when the active toolchain
-dispatches external `swift-*` executables. Apple/Xcode toolchains can dispatch
-that form through `xcrun swift skill`. When the active `swift` comes from a
-Swiftly-managed toolchain, this dispatch may fail with an unknown or missing
-subcommand error; use `swift-skill` directly in that case.
-
-## Install Skills
-
-```bash
+```sh
+skill add https://github.com/anthropics/skills.git --all --agent codex
+skill list
+skill list --scope user --json
 skill install
-skill list <source>
-skill add <source> --agent codex --skill my-skill
-skill add larksuite/cli@branch:main@skill:lark-base --watch --scope user
-skill list --agent codex --json
-skill list --all --scope user
-skill doctor --scope user --json
-skill update my-skill --apply
-skill remove my-skill --agent codex
+skill update
+skill update pdf --apply
+skill remove pdf
+skill init my-skill
+skill doctor --root /path/to/project-a /path/to/project-b --json
 ```
 
-`skill install` reads resolved state and materializes pinned skills into the
-selected scope's canonical installed-skill surface and agent projections. It
-defaults to project scope; pass `--scope user` to restore user-scope installs.
-`skill add <source>` adds or changes selected-scope skill dependencies and
-updates the resolved file.
-`skill list` reports managed skills from the resolved file and checks whether
-their installed directories still exist. Use `skill list --all` to scan all
-installed skill directories, including unmanaged skills.
+Project scope uses the current directory and stores `agents.json`,
+`agents.resolved`, and `cache/` under `.agent/`. `--scope user` uses
+`~/.agents/`. Keep state and caches out of version control.
 
-Project source checkouts are cached under `.agent/cache`; project installed
-skills are materialized under `.agents/skills`. User-scope source checkouts use
-`$XDG_CACHE_HOME/skill-cli` when set, otherwise `~/Library/Caches/skill-cli` on
-macOS or `~/.cache/skill-cli` on other platforms. User-scope default link-mode
-installs materialize canonical installed copies under `~/.agents/skills`. Agents
-whose configured project skill directory is `.agents/skills` use the canonical
-user directory directly; native-only agents receive projections into their own
-skill directories.
+`add` installs in `link` mode for the recipients already recorded for that
+skill or source, otherwise for the declaration's default agents (initially
+Codex and Claude Code). Repeat `--agent` to choose recipients. `link` and `copy` install committed,
+pinned content from Git sources; `edit` links a live local directory.
+An unnamed add installs the only discovered skill or prints choices when
+there are several. `--all` follows future membership changes on update.
 
-Install modes:
+Commands are non-interactive. Updates preview by default; `--apply` prints
+the differences before writing. See the [CLI reference](Documentation/Reference/CLI.md)
+for options, JSON schemas, errors, and exit codes.
 
-- `--mode link` is the default managed install: skill-cli owns canonical copies
-  and agent projections.
-- `--mode copy` writes physical copies to the selected install surfaces.
-- `--mode edit` is for local development only: the canonical installed skill
-  entry is a live symlink to the local source skill directory, and agent
-  projections link through that canonical entry. It requires an unpinned local
-  source and is rejected for remote sources, source requirements, and watch
-  installs.
+## Upgrading from 0.2
 
-`skill doctor` diagnoses resolved state, missing installs, broken links,
-copy drift, source-missing edit installs, fallback copies, and unmanaged
-installed-only skills without mutating skill state.
-
-Supported source shapes include local paths, GitHub/GitLab URLs and shorthand,
-direct git URLs, and well-known skill discovery. Well-known discovery supports
-compatibility `files[]` indexes, v0.2 `skill-md`, and digest-verified archive
-artifacts.
-Source requirements can be expressed with SwiftPM-style flags such as
-`--branch`, `--revision`, `--exact`, `--from`, `--up-to-next-minor-from`, and
-`--to`, or with typed shorthand such as `owner/repo@branch:main@skill:name`.
+0.3 uses the shared `agents.json` declaration and `agents.resolved` lock in
+project `.agent/` or user `~/.agents/`. It does not read 0.2 state files.
+Add sources again with `skill add`; skill names are positional arguments.
+The 0.2 watch and review commands are removed; watch returns as a
+subscription in a later 0.3 change.
 
 ## Bundled Companion Skill
 
-This repository includes a `skill-cli` companion skill that teaches agents to
-use this CLI for skill lifecycle management. It covers adding, restoring,
-listing, updating, removing, watching, and reviewing skills across project and
-user scopes.
+Install the companion that teaches agents this command surface:
 
-Install it from the published repository:
-
-```bash
-skill add skill-cli/cli@branch:master --path skills/skill-cli --scope user --agent codex
+```sh
+skill add skill-cli/cli --branch master --path skills/skill-cli --scope user --agent codex
 ```
 
-From a source checkout, install the local version for development:
+For live local development:
 
-```bash
+```sh
 skill add . --path skills/skill-cli --scope user --agent codex --mode edit
 ```
 
-## Watch Sources
+## Development
 
-Managed watch mode records source/path state and gates installs through the
-watched baseline or reviewed commit:
+Requires macOS 13 or later and Swift 6.3 or later.
 
-```bash
-skill add <source> --watch-only --skill my-skill
-skill add <source> --watch --skill my-skill
-skill diff <source> --watch --path skills/my-skill
-skill review check <source> --watch --path skills/my-skill
-skill review done <source> --watch --path skills/my-skill --note "reviewed"
-skill update <source> --from-watch --path skills/my-skill --apply
+```sh
+swift build
+swift run skill --help
 ```
 
-Watch state lives in `.agent/skills-state.json`. The CLI owns this file; it is
-readable and diffable, but not a hand-edited config contract.
+The package consumes core's `master` branch during development. Release
+preparation changes this to a published version range. The build-time version
+is `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`.
 
-## Documentation
-
-- `Documentation/Reference/CLI.md`: command reference
-- `Documentation/Decisions/SPMInspiredRegistry.md`: registry design rationale
+See [Contributing](CONTRIBUTING.md) for the full validation loop,
+[Architecture](Documentation/Architecture/Package.md) for ownership,
+and [Releasing skill](Documentation/Reference/Release.md) for release checks.

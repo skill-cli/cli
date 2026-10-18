@@ -1,233 +1,201 @@
 # CLI Reference
 
-The package builds the `skill` executable. Homebrew also installs a
-Swift-prefixed `swift-skill` executable that invokes the same CLI.
+`skill` manages declared skills. All resolution, installation, state, and
+recovery operations use `AgentsCore` and `AgentsSkills`. Commands match the skills
+operations of `agents`; instruction declarations, locked records, and target
+files remain untouched.
 
-Portable installed entrypoints:
+## Commands
 
-```bash
-skill --help
-swift-skill --help
-```
-
-Use `swift-skill` directly when you want the Swift-prefixed entrypoint. The
-spelling `swift skill` depends on Swift driver external-command dispatch and is
-not part of the current `skill-cli` command contract. Apple/Xcode toolchains can
-dispatch this form through `xcrun swift skill`. When the active `swift` comes
-from a Swiftly-managed toolchain, this dispatch may fail with an unknown or
-missing subcommand error. Treat `swift skill` as optional toolchain behavior,
-not as the supported CLI entrypoint.
-
-## Command Families
-
-Visible commands:
-
-```bash
-skill add <source>
-skill install
-skill list [source]
-skill doctor
-skill remove [skills...]
-skill update [skills...]
-skill status <source> --watch
-skill diff <source> --watch
-skill review check|seen|done <source> --watch
+```text
+skill add <source> [names…] [--all]
+skill list [source] [--json]
+skill remove <names…>
+skill update [names…] [--apply | --json]
 skill init [name]
-```
-
-Compatibility aliases:
-
-- `add`: `a`
-- `list`: `ls`
-- `remove`: `rm`, `r`
-- `update`: `upgrade`, `check`
-
-## Source Requirements
-
-Canonical requirement flags follow SwiftPM-style spelling:
-
-```bash
-skill add owner/repo --branch main
-skill add owner/repo --revision abc123
-skill add owner/repo --exact 1.2.3
-skill add owner/repo --exact 1.2.3-beta.4
-skill add owner/repo --from 1.2.0
-skill add owner/repo --up-to-next-minor-from 1.2.0
-skill add owner/repo --from 1.2.0 --to 2.0.0
-```
-
-Typed shorthand is also supported:
-
-```bash
-skill add larksuite/cli@branch:main
-skill add larksuite/cli@branch:main@path:skills/lark-base
-skill add larksuite/cli@from:1.2.0@skill:lark-base
-skill add larksuite/cli@revision:abc123@path:skills/lark-base
-```
-
-Rules:
-
-- exact versions retain prerelease and build identifiers; an optional `v` tag
-  prefix is accepted
-- ranges include versions at or above the lower bound and below the upper bound
-  using SemVer precedence; prereleases are eligible only when a bound also has
-  prerelease identifiers and shares the candidate's `major.minor.patch`
-- known requirement labels are `branch`, `revision`, `exact`, `from`,
-  `minor`, and `ref`
-- known selector labels are `path` and `skill`
-- at most one requirement label and one selector label are allowed
-- explicit requirement flags conflict with a different shorthand requirement
-- explicit `--path` or `--skill` conflicts with a different shorthand selector
-- legacy `owner/repo#ref@skill` remains accepted for migration, but typed
-  shorthand is the preferred Swift-native syntax
-
-## Install Commands
-
-Install project skills from the resolved file:
-
-```bash
 skill install
-skill install --scope user
+skill doctor [--root <dir>…] [--json]
 ```
 
-`skill install` reads the selected resolved file and materializes pinned skills
-into the selected scope's canonical installed-skill surface and agent
-projections. It defaults to project scope.
+`skill --help` and each command's `--help` describe
+their options. Running without a subcommand prints help. `skill --version`
+prints `skill X.Y.Z` and is available only on the root command; the version
+constant lives in `Sources/CLI/EntryPoint.swift`.
 
-Add skills from a local path, GitHub/GitLab shorthand or URL, direct git URL,
-or well-known provider:
+Root help includes:
 
-```bash
-skill list <source>
-skill add <source> --agent codex --skill my-skill
-skill add <local-source> --mode edit --agent codex --skill my-skill
-skill add <source> --mode copy --agent codex cursor
-skill add <source> --all --agent "*"
-skill add <source> --scope user
+```text
+Examples:
+  skill add github.com/owner/skills pdf-forms
+  skill list
+  skill install
+  skill update               Preview what re-resolving would change
+  skill update --apply       Write the updates and the new lock
 ```
 
-Install defaults are project scope, link mode, Codex agent, and the selected
-skill. `--all` means all discovered skills only. Targeting every supported
-agent is explicit through `--agent "*"`.
+## Shared Options
 
-Install modes:
+| Option | Meaning | Commands |
+| --- | --- | --- |
+| `--scope project\|user` | Where state lives: project (./.agent) or user (~/.agents). Default: project. | All lifecycle and read commands; `init` uses the current directory |
+| `--agent <agent>` | Agent to install for: codex, claude-code, cursor, gemini-cli or opencode. Repeat for several. Default: the agents already recorded for this skill or source, else the declaration's agents, else codex and claude-code. | `add` |
+| `--agent <agent>` | Limit to this agent: codex, claude-code, cursor, gemini-cli or opencode. Repeat for several. Default: all recipients. | `list`, `remove`, `doctor` |
+| `--path <subdir>` | Search this subdirectory of the source. | `add`, `list <source>` |
+| `--full-depth` | Discover recursively beyond conventional skill directories | `add`, `list <source>` |
+| `--mode link\|copy\|edit` | How to install: link (default), copy, or edit (a live link to a local source). | `add` |
+| `--root <dir>…` | Audit these project directories read-only. Repeat for several. | `doctor` |
+| `--json` | Emit a versioned JSON report on stdout | `list`, `doctor`, update previews |
 
-- `link` is the default managed mode. It materializes a canonical installed copy
-  and links native-only agent projections to that canonical copy when needed.
-- `copy` writes physical copies to the selected install surfaces.
-- `edit` is local-development mode. It requires an unpinned local source,
-  symlinks the canonical installed entry to the local source skill directory,
-  and links agent projections through that canonical entry. It is rejected for
-  remote sources, well-known sources, source requirement flags, and watch
-  installs.
+Agents are `codex`, `claude-code`, `cursor`, `gemini-cli`, and `opencode`.
+Core also accepts `claude` and `gemini` as input aliases. Output uses canonical
+IDs. On add, omitted recipients use the agents already recorded for the skill
+or source, then declaration defaults (initially Codex and Claude Code).
+On installed list, remove, and doctor, omission covers all
+recipients. Source listing shows available skills regardless of recipients.
+Doctor's agent filter limits installation checks; source checks cover the scope.
 
-Supported agents:
+Updates use declared paths, recipients, and modes. Installation restores those
+recorded in the lock. Neither update nor install accepts a recipient or mode
+override. `--path` always refers to source discovery, never a project root;
+change directory for project operations or use doctor's `--root` for auditing.
+Unsupported options are usage errors.
 
-- `codex`
-- `claude-code`
-- `cursor`
-- `gemini-cli`
-- `opencode`
+## Adding and Inspecting Sources
 
-Project installs write canonical installed skills under `.agents/skills` in the
-current project. User-scope default link-mode installs write canonical installed
-copies under `$HOME/.agents/skills`. Agents whose configured project skill
-directory is `.agents/skills` use the canonical user directory directly;
-native-only agents receive projections in their own skill directories. Project
-resolved state is recorded in `.agent/skills.resolved`.
-User resolved state is recorded at `$XDG_STATE_HOME/skills/skills.resolved` when
-`XDG_STATE_HOME` is set, otherwise `$HOME/.agents/skills.resolved`.
+`source` is a local path, Git URL or shorthand accepted by core, well-known
+HTTP source, or an existing declaration alias. Add writes the declaration,
+installations, and lock together.
 
-Commands refuse to read or modify resolved state they cannot decode;
-`skill doctor` reports the error with a hint to repair or restore the file.
+`<names>`: Skills to add. Omit to add the source's only skill, or to list the
+choices when it has several. Explicit names select those skills. `--all` selects
+all current and future members on unnamed updates; combining names and `--all`
+is a usage error.
 
-Project source checkouts are cached under `.agent/cache`. User source checkouts
-are cached under `$XDG_CACHE_HOME/skill-cli` when `XDG_CACHE_HOME` is set,
-otherwise `$HOME/Library/Caches/skill-cli` on macOS or `$HOME/.cache/skill-cli`
-on other platforms. Source checkout caches are not the installed skill surface.
+`link` links verified, pinned cache content. `copy` installs pinned copies.
+Both require a Git repository for local sources and read committed content.
+`edit` links live local directories and accepts no requirement.
 
-List managed skills from resolved state, or scan all installed skill
-directories:
+Requirement options on add map directly to declaration forms:
 
-```bash
-skill list --agent codex --json
-skill list --scope user
-skill list --all --scope user
-skill remove my-skill --agent codex
-skill remove --all
+| Option | Declaration | Matching versions |
+| --- | --- | --- |
+| `--branch main` | `"branch": "main"` | Git branch |
+| `--revision <rev>` | `"revision": "<rev>"` | Git revision |
+| `--exact 1.2.3` | `"exact": "1.2.3"` | Exact semantic version |
+| `--from 1.2.3` | `"from": "1.2.3"` | At least 1.2.3, below 2.0.0 |
+| `--up-to-next-minor-from 1.2.3` | `"upToNextMinor": "1.2.3"` | At least 1.2.3, below 1.3.0 |
+| `--from 1.2.3 --to 1.8.0` | `"from": "1.2.3", "to": "1.8.0"` | Half-open range [1.2.3, 1.8.0) |
+
+Choose one requirement form; `--to` requires `--from`. With no requirement,
+core uses the latest version tag or the default branch if there are no tags.
+
+`list` lists managed lock records, including missing or drifted installs,
+one row per recipient. `list <source>` inspects what a source provides.
+Source discovery paths can refer to cache materializations and are not stable
+identifiers; use the source ID and skill name for identity.
+
+## Update, Restore, Remove, and Initialize
+
+`update` previews by default, comparing newly resolved declarations
+against disk. `update <names…>` limits resolution to named skills;
+Unnamed `update` reconciles every declared skill,
+including membership changes in `all` selections.
+
+`--apply` prints old/new revisions, hashes, and full before/after file snapshots
+before core replaces targets and lock together. File output includes deletion,
+directory, symbolic-link destination, text, and binary bytes (base64). This is
+a full snapshot comparison, not a minimal unified patch. A preview can become
+stale; `--apply` resolves again and displays the content it will actually write.
+`--json --apply` is a usage error.
+
+`install` restores exact locked pins, hashes, modes, and recipients. It does not
+resolve newer versions and takes no source argument. Unavailable pins or content
+that fails digest verification cause failure.
+
+`remove` requires names and removes their declarations, files, and lock entries.
+With `--agent`, it removes only those recipients. Removing a member of an `all`
+selection records an exclusion so an update does not reinstall it.
+
+`init [name]` creates a skill directory and `SKILL.md` in the current directory;
+without a name it creates `SKILL.md` directly there. Existing files are errors.
+
+## Doctor and State
+
+Doctor reports core's skill checks, including missing installations, drift,
+broken links, newer matching source revisions, and uncommitted source content.
+`--root` accepts multiple directories, either after one option or repeated.
+Each root is an explicit project directory; `--root` cannot combine with user
+scope. A nonexistent root is an error. Without roots, project scope uses the
+current directory and user scope uses HOME.
+
+| Scope | Declaration | Lock | Cache |
+| --- | --- | --- | --- |
+| Project | `.agent/agents.json` | `.agent/agents.resolved` | `.agent/cache/` |
+| User | `~/.agents/agents.json` | `~/.agents/agents.resolved` | `~/.agents/cache/` |
+
+Project roots are the current directory, not a search up the Git ancestry.
+Core resolves installation locations, including `CODEX_HOME`,
+`CLAUDE_CONFIG_DIR`, and `XDG_CONFIG_HOME` when applicable. User state remains
+under HOME's `.agents` directory.
+
+Read commands and previews do not write declarations, locks, or installations
+during normal operation. They may fetch/cache source data. If core recovers an
+interrupted transaction on any operation, the CLI reports recovery on stderr
+and retries that operation once. A second recovery or any other failure stops
+the command. Recovery can restore files even when triggered by a read command.
+
+## Output and Exit Status
+
+Human-readable stdout is the default. Commands are non-interactive and never
+prompt; add, remove, init, and install perform their named actions immediately.
+Only `update --apply` writes an update. Diagnostics and recovery notices go to
+stderr. Errors are one line containing the cause and a suggested action.
+Terminal control characters in human-readable source text are replaced by spaces.
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success, including help/version, unchanged previews, and doctor warnings |
+| `1` | Operation failure or a completed doctor report containing an error check |
+| `64` | Invalid usage, including unknown commands, options, or invalid option combinations |
+
+An unknown command or subcommand exits `64` with the message
+`Unknown command '<name>'`, including when `--help` follows it.
+
+Doctor's `ok` means there are no error checks; warnings do not make it false.
+A failed operation emits no successful JSON report. JSON stdout contains only
+one object and a trailing newline; recovery notices remain on stderr.
+
+## JSON Schemas
+
+All reports have integer `schemaVersion: 1`. Object keys are sorted. Arrays
+follow core's deterministic skill ordering; doctor roots retain input order.
+Optional properties are omitted when unavailable, never encoded as `null`.
+Filesystem paths, including update file paths, are absolute. File bytes use standard base64. Missing `before` or `after`
+means that entry is absent, distinct from an empty file or directory.
+Clients should ignore unknown properties; incompatible changes require a new
+schema version. Diagnostic IDs are core-defined strings, not a closed enum.
+
+| Command | Schema | Required root fields |
+| --- | --- | --- |
+| `list --json` | [Installed list](Schemas/installed-list.schema.json) | `schemaVersion`, `kind: "installed"`, `scope`, `skills` |
+| `list <source> --json` | [Source list](Schemas/source-list.schema.json) | `schemaVersion`, `kind: "source"`, `scope`, `source`, `skills` |
+| `update --json` | [Update](Schemas/update.schema.json) | `schemaVersion`, `scope`, `changed`, `skills` |
+| `doctor --json` | [Doctor](Schemas/doctor.schema.json) | `schemaVersion`, `ok`, `roots` |
+
+An empty installed list:
+
+```json
+{"schemaVersion":1,"kind":"installed","scope":"project","skills":[]}
 ```
 
-`skill list` reads the relevant `skills.resolved` file and reports whether each
-managed installation still exists on disk. Status values include `installed`,
-`missing`, `broken-link`, `copy-drift`, `source-missing`, `copy-fallback`,
-`edit-linked`, and `installed-only`. `skill list --all` scans agent skill
-directories and includes unmanaged skills that are not tracked by resolved
-state.
+An empty update preview:
 
-`skill remove` accepts managed names from resolved state even when their
-installation files or local source are missing. It removes the selected
-installation records as well as any remaining installed files.
-
-Diagnose install state without mutating files:
-
-```bash
-skill doctor
-skill doctor --scope user --agent codex --json
+```json
+{"schemaVersion":1,"scope":"project","changed":false,"skills":[]}
 ```
 
-`skill doctor` checks resolved-state readability, managed install health,
-broken links, missing local sources, copy drift, fallback copies, and unmanaged
-installed-only skills. Skills in shared directories are diagnosed as managed
-for each selected agent that reads that directory. A separate untracked
-directory remains installed-only even when its skill name matches a managed
-installation.
+A healthy doctor report:
 
-Update from resolved state:
-
-```bash
-skill update my-skill
-skill update my-skill --apply
+```json
+{"schemaVersion":1,"ok":true,"roots":[{"root":"/project","scope":"project","ok":true,"checks":[]}]}
 ```
-
-## Managed Watch Commands
-
-Preferred managed source commands:
-
-```bash
-skill add <source> --watch-only --skill my-skill
-skill add <source> --watch --skill my-skill
-skill list --watch
-skill status <source> --watch --history --json
-skill diff <source> --watch --path skills/foo
-skill review check <source> --watch --path skills/foo
-skill review seen <source> --watch --path skills/foo --note "seen"
-skill review done <source> --watch --path skills/foo --note "reviewed"
-skill update <source> --from-watch --path skills/foo --apply
-skill remove <source> --watch --path skills/foo
-```
-
-Managed semantics:
-
-- `add --watch-only` writes `.agent/skills-state.json` only.
-- `add --watch` upserts the watch ledger and installs through the watched
-  baseline or reviewed commit, not unreviewed `current_head`.
-- re-running `add --watch` for the same source and requirement merges paths,
-  refreshes `current_head`, and preserves review cursors.
-- changing the requirement requires `--replace-requirement`, which resets the
-  affected review baseline and cursors and records a ledger event.
-- `update --from-watch` installs reviewed or baseline content from a watch; it
-  does not advance review cursors.
-- `diff --watch` and `review ... --watch` are path-scoped.
-- watch status, diff, and review commands refresh the managed source state
-  internally before reading or writing watch cursors.
-- install lock and watch ledger remain separate stores that share source pin
-  and requirement primitives.
-
-Cursor rules:
-
-- `diff` is read-only.
-- `check` records checked handoff evidence.
-- `seen` advances `last_seen` without review coverage.
-- `done` records external review closeout and advances path-scoped review
-  coverage.
-- `done --all` applies only to watched paths with checked evidence.

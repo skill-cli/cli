@@ -11,12 +11,13 @@ concurrency:
 
 jobs:
   swift:
-    name: Swift Package
+    name: Swift skill CLI
     runs-on: macos-26
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Toolchain
         run: |
@@ -24,40 +25,47 @@ jobs:
           xcrun swift-format --version
 
       - name: Format
-        run: xcrun swift-format lint --configuration .swift-format --recursive Package.swift Sources Tests
+        run: xcrun swift-format lint --strict --configuration .swift-format --recursive Package.swift Sources Tests
+
+      - name: Release Build
+        run: swift build -c release
 
       - name: Test
-        run: swift test
+        run: env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
+
+      - name: Executable Smoke Checks
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import subprocess
+          import tempfile
+
+          executable = pathlib.Path('.build/release/skill').resolve()
+          with tempfile.TemporaryDirectory(prefix='skill-smoke-') as root:
+              env = {
+                  'HOME': root,
+                  'TMPDIR': root,
+                  'PATH': '/usr/bin:/bin:/usr/sbin:/sbin',
+                  'GIT_CONFIG_NOSYSTEM': '1',
+                  'GIT_CONFIG_GLOBAL': '/dev/null',
+                  'GIT_TERMINAL_PROMPT': '0',
+              }
+              for arguments in [['--help'], ['add', '--help'], ['list', '--help'], ['remove', '--help'],
+                                ['update', '--help'], ['init', '--help'], ['install', '--help'],
+                                ['doctor', '--help']]:
+                  result = subprocess.run([str(executable), *arguments], cwd=root, env=env,
+                                          capture_output=True, text=True, check=True)
+                  assert 'USAGE:' in result.stdout and not result.stderr, result
+                  print(result.stdout)
+              for arguments in [['unknown'], ['unknown', '--help'], ['help', 'unknown']]:
+                  result = subprocess.run([str(executable), *arguments], cwd=root, env=env,
+                                          capture_output=True, text=True)
+                  assert result.returncode == 64 and not result.stdout, result
+                  assert result.stderr.startswith('Error:'), result
+                  print(result.stderr)
+          PY
 
       - name: Diff Check
-        run: git diff --check
-
-      - name: CLI Help Smoke
-        run: |
-          set -euo pipefail
-          swift run skill --help >/dev/null
-          swift run skill add --help >/dev/null
-          swift run skill install --help >/dev/null
-          swift run skill list --help >/dev/null
-          swift run skill remove --help >/dev/null
-          swift run skill update --help >/dev/null
-          swift run skill status --help >/dev/null
-          swift run skill diff --help >/dev/null
-          swift run skill review --help >/dev/null
-          swift run skill review check --help >/dev/null
-
-      - name: Unknown Command Smoke
-        run: |
-          set -euo pipefail
-          for command in unknown-command i sync experimental_sync experimental_install; do
-            set +e
-            output="$(swift run skill "$command" --help 2>&1)"
-            exit_status="$?"
-            set -e
-            if [[ "$exit_status" -ne 64 ]]; then
-              echo "$output"
-              echo "expected $command to exit 64, got $exit_status"
-              exit 1
-            fi
-            grep "Unknown command '$command'" <<<"$output"
-          done
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: git diff --check "$BASE_SHA" HEAD
