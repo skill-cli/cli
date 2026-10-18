@@ -96,7 +96,7 @@ enum Terminal {
     case CoreError.invalidState:
       action = "check the scope's agents.json, agents.resolved, and recovery journal"
     case CoreError.commandFailed:
-      action = "check Git access and the source location"
+      action = "check the command arguments and filesystem permissions"
     default:
       action = "check the command arguments and filesystem permissions"
     }

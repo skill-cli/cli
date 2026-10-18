@@ -5,6 +5,12 @@ import Testing
 @testable import CLI
 
 struct HumanOutputTests {
+  @Test func nonGitProcessFailuresGetTheGenericRemedy() {
+    #expect(
+      Terminal.failureRemedy(CoreError.commandFailed("tar -xf archive.tar"), command: Install())
+        == "check the command arguments and filesystem permissions")
+  }
+
   private func diff(_ before: String?, _ after: String?) -> String {
     LineDiff.render(
       before: before.map { Data($0.utf8) }, after: after.map { Data($0.utf8) }, path: "rules.md")
