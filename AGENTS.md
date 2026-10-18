@@ -42,12 +42,17 @@ entry points.
 - If a value changes by input or environment, pass it in, configure it, derive
   it, or link to the owning artifact.
 - Keep CLI parsing and terminal behavior in the CLI owner, and reusable logic
-  in the core owner.
+  in agents-tools/core.
 
 ## Operating Notes
 
 - Keep package-domain prefixes out of internal target names unless the package
   boundary stops making that context clear.
 - Keep CLI parsing and terminal behavior in `Sources/CLI`.
-- Keep reusable behavior in `Sources/Core`.
+- This package is a command layer; reusable behavior belongs to
+  `AgentsCore` and `AgentsSkills` in agents-tools/core.
+- Mirror agents-tools/cli file layout and shared command behavior.
+- Call only `SkillOperations`; preserve instruction declarations, locked
+  records, and target files.
+- Keep CLI tests in `Tests/CLITests` with explicit subprocess environments.
 - Run `swift test` before handing off behavior changes.

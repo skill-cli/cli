@@ -14,11 +14,11 @@ sources when they do not already know where a skill lives.
 ## Boundary
 
 This proposal does not reserve a public command name and does not change the
-current CLI reference. Any future surface must be designed from the repository's
-own dependency model:
+current CLI reference. Any future surface must be designed from the shared dependency model in agents-tools/core, with command parsing and
+presentation owned here:
 
 - `add <source>` mutates project skill dependencies.
-- `install` materializes `.agent/skills.resolved`.
+- `install` materializes `.agent/agents.resolved`.
 - `list <source>` inspects a known source.
 - hosted source-index discovery, if added, must remain separate from resolved
   state mutation until the user chooses a concrete source.
@@ -27,7 +27,7 @@ own dependency model:
 
 A future source-index feature should return candidate skill sources with enough
 metadata for a caller to decide whether to run `skill add <source>`. It should
-not install, update, or alter `.agent/skills.resolved` by itself.
+not install, update, or alter `.agent/agents.resolved` by itself.
 
 Open design questions:
 

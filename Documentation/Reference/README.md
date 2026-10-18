@@ -5,6 +5,8 @@ This directory holds supporting reference material for `skill-cli`.
 ## Files
 
 - `CLI.md`: current command reference
+- `Release.md`: source release checks and tap handoff
+- `Schemas/`: versioned CLI JSON report schemas
 
 ## Placement
 

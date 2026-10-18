@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Skill update preview, version 1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "scope": {
+      "enum": [
+        "project",
+        "user"
+      ]
+    },
+    "changed": {
+      "type": "boolean"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "oldRevision": {
+            "type": "string"
+          },
+          "newRevision": {
+            "type": "string"
+          },
+          "oldHash": {
+            "type": "string"
+          },
+          "newHash": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "before": {
+                  "$ref": "#/$defs/entry"
+                },
+                "after": {
+                  "$ref": "#/$defs/entry"
+                }
+              },
+              "required": [
+                "path"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "source",
+          "changed",
+          "files"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "scope",
+    "changed",
+    "skills"
+  ],
+  "$defs": {
+    "entry": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "file"
+            },
+            "base64": {
+              "type": "string",
+              "contentEncoding": "base64"
+            }
+          },
+          "required": [
+            "kind",
+            "base64"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "directory"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "symlink"
+            },
+            "destination": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "destination"
+          ]
+        }
+      ]
+    }
+  }
+}

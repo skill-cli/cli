@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Managed skill list, version 1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "installed"
+    },
+    "scope": {
+      "enum": [
+        "project",
+        "user"
+      ]
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "agent": {
+            "enum": [
+              "codex",
+              "claude-code",
+              "cursor",
+              "gemini-cli",
+              "opencode"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "installed": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "installed",
+              "missing",
+              "copy-drift",
+              "broken-link",
+              "edit-linked",
+              "installed-only"
+            ]
+          },
+          "mode": {
+            "enum": [
+              "link",
+              "copy",
+              "edit"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "agent",
+          "path",
+          "installed",
+          "status"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "kind",
+    "scope",
+    "skills"
+  ]
+}

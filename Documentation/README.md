@@ -25,3 +25,8 @@ default.
 - Put supporting reference material in `Reference/`.
 - Keep DocC catalogs with their SwiftPM targets.
 - Keep GitHub-facing governance in `.github/`, not here.
+
+## References
+
+- [CLI](Reference/CLI.md): commands, output, state, and JSON schemas
+- [Release](Reference/Release.md): core dependency, version, signed publication, and tap validation
