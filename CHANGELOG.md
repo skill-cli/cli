@@ -7,6 +7,15 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+### Fixed
+
+- Sources accept typed selectors again, as in
+  `skill add larksuite/cli@from:1.0.0@skill:lark-base`: `@branch:`, `@ref:`,
+  `@revision:`, `@exact:`, `@from:`, `@minor:`, `@path:`, and `@skill:`.
+- Adding a source whose last path component another source already uses, such
+  as a second `…/skills` repository, declares it under a prefixed alias like
+  `anthropics-skills` instead of failing.
+
 ## [0.3.0] - 2026-10-19
 
 ### Added

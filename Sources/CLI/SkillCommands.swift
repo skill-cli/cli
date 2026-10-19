@@ -7,7 +7,10 @@ struct Add: ParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "add", abstract: "Declare and install skills from a source.")
 
-  @Argument(help: "Git URL, local directory, well-known URL, or declared source alias.")
+  @Argument(
+    help:
+      "Git URL, local directory, well-known URL, or declared source alias, optionally followed by selectors such as @branch:main or @skill:name."
+  )
   var source: String
   @Argument(
     help:

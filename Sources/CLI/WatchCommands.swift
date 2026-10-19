@@ -16,7 +16,10 @@ struct AddWatch: ParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "add", abstract: "Subscribe to a source without installing its content.")
 
-  @Argument(help: "Declared source alias, source ID, Git URL, local directory, or well-known URL.")
+  @Argument(
+    help:
+      "Declared source alias, source ID, Git URL, local directory, or well-known URL, optionally followed by selectors such as @branch:main."
+  )
   var source: String
   @OptionGroup var location: ScopeOptions
   @OptionGroup var discovery: SourcePathOptions
