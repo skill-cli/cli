@@ -7,6 +7,10 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-20
+
+Built on agents-tools/core 0.1.1.
+
 ### Fixed
 
 - Sources accept typed selectors again, as in
@@ -43,5 +47,6 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 - Adding or installing a skill never replaces a directory, file, or link that
   the scope's lock does not manage, such as a hand-written skill.
 
-[Unreleased]: https://github.com/skill-cli/cli/compare/v0.3.0...master
+[Unreleased]: https://github.com/skill-cli/cli/compare/v0.3.1...master
+[0.3.1]: https://github.com/skill-cli/cli/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/skill-cli/cli/compare/v0.2.2...v0.3.0
