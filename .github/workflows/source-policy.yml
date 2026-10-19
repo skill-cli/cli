@@ -1,0 +1,21 @@
+name: Source policy
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    permissions:
+      contents: read
+    uses: agents-tools/.github/.github/workflows/policy.yml@301c132794cbee950bfca6ba83987975d1ea6917

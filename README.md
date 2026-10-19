@@ -154,18 +154,20 @@ skill add . --path skills/skill-cli --scope user --agent codex --mode edit
   data flow
 - [Releasing skill](Documentation/Reference/Release.md): dependency, version,
   and release checks
+- [Changelog](CHANGELOG.md): unreleased changes and earlier releases
 
 ## Contributing
 
-Read [Contributing](CONTRIBUTING.md) for change guidelines and the full
-validation loop. The [development section](#development) gets a local build
-running.
+Follow the family [change flow](https://github.com/agents-tools/.github/blob/master/MAINTENANCE.md#change-flow)
+and read [Contributing](CONTRIBUTING.md) for the development loop and required
+CI contexts. The [development section](#development) gets a local build running.
 
 ### Development
 
 ```sh
 swift build
 swift run skill --help
+env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
 ```
 
 The package consumes core's `master` branch during development. Release
