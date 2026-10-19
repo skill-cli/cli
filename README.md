@@ -75,8 +75,7 @@ brew install --HEAD skill-cli/tap/skill-cli
 The tap provides `skill` and `swift-skill`. Use either executable directly;
 `swift skill` depends on the active Swift driver's external-command dispatch.
 See the [tap documentation](https://github.com/skill-cli/homebrew-tap#readme)
-for packaging and channel details. This checkout documents the 0.3 command
-surface; the stable tap may still distribute 0.2 until 0.3 is released.
+for packaging and channel details.
 
 ## Usage
 
