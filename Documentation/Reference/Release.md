@@ -27,8 +27,11 @@ and publishing each refuse to run unless the earlier blocks set their markers.
    minor version. Update `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`;
    it is compiled into the binary and works in source archives without Git.
    Tests compare output against this constant, not a duplicate version literal.
-3. Prepare release notes covering changes, fixes, and upgrade steps. Use signed
-   Conventional Commits and follow the normal review and merge process.
+3. Follow the family [versioning policy](https://github.com/agents-tools/.github/blob/master/VERSIONING.md).
+   Move the shipped entries from [Unreleased](../../CHANGELOG.md#unreleased)
+   into a versioned section, retaining Unreleased for subsequent work. Prepare
+   release notes covering changes, fixes, and upgrade steps, and follow the
+   family [change flow](https://github.com/agents-tools/.github/blob/master/MAINTENANCE.md#change-flow).
 
 ## Verify the Release Commit
 
