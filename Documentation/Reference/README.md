@@ -6,6 +6,7 @@ This directory holds supporting reference material for `skill-cli`.
 
 - `CLI.md`: current command reference
 - `Release.md`: source release checks and tap handoff
+- [ReadmeDemo.md](ReadmeDemo.md): recording and rendering the README demo
 - `Schemas/`: versioned CLI JSON report schemas
 
 ## Placement

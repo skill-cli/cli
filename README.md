@@ -1,31 +1,42 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/skill-cli/cli/master/Documentation/Assets/Logo.png">
-    <img src="Documentation/Assets/Logo-dark.png" width="160" alt="skill logo">
-  </picture>
+  <a href="https://github.com/skill-cli/cli">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="Documentation/Assets/Logo.png">
+      <img src="Documentation/Assets/Logo-dark.png" width="160" alt="skill logo">
+    </picture>
+  </a>
 </p>
 
 <h1 align="center">skill</h1>
 
 <p align="center">
-  Install, restore and watch agent skills from the command line.
+  A package manager for agent skills.
 </p>
 
 <p align="center">
   <a href="https://github.com/skill-cli/cli/actions/workflows/ci.yml"><img src="https://github.com/skill-cli/cli/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Swift-6.3%2B-F05138" alt="Swift 6.3+">
-  <img src="https://img.shields.io/badge/platforms-macOS%2013%2B-lightgrey" alt="Platforms: macOS 13+">
+  <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-6.3%2B-F05138" alt="Swift 6.3+"></a>
+  <a href="Package.swift"><img src="https://img.shields.io/badge/platforms-macOS%2013%2B-lightgrey" alt="Platforms: macOS 13+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
 </p>
 
-`skill` manages agent skills from declared sources. Add skills once, restore
-exact locked content with `install`, and preview upstream changes before
-applying an update. It supports Codex, Claude Code, Cursor, Gemini CLI, and
-OpenCode through [agents-tools/core](https://github.com/agents-tools/core).
-
 <p align="center">
-  <img src="Documentation/Assets/Demo.svg" width="630" alt="Terminal session: skill adds three skills, watches their source, reports an upstream change, and applies it">
+  <a href="#overview">Overview</a> ·
+  <a href="#quick-look">Quick look</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#requirements">Requirements</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="#contributing">Contributing</a> ·
+  <a href="#license">License</a>
 </p>
+
+## Overview
+
+Declare skills once, restore exact locked content with `install`, and preview
+upstream changes before applying an update. `skill` supports Codex, Claude Code,
+Cursor, Gemini CLI, and OpenCode through
+[agents-tools/core](https://github.com/agents-tools/core).
 
 This is the skills edition of [agents](https://github.com/agents-tools/cli).
 `skill add|list|remove|update|init` matches `agents skills` commands;
@@ -33,6 +44,18 @@ This is the skills edition of [agents](https://github.com/agents-tools/cli).
 selections, locked instruction records, and target files remain untouched.
 `skill watch` matches `agents watch` and shares its subscription state,
 including reports of instruction units and well-known artifacts.
+
+## Quick look
+
+Install two skills from a local Git source, watch it for changes, and apply an
+upstream update:
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="Documentation/Assets/Demo/Demo-dark.svg">
+    <img src="Documentation/Assets/Demo/Demo-light.svg" alt="Recorded terminal: install review and commit, watch their source, commit new review guidance, then inspect and apply the update.">
+  </picture>
+</p>
 
 ## Install
 
@@ -93,7 +116,7 @@ differences before writing. See the
 [CLI reference](Documentation/Reference/CLI.md) for options, JSON schemas,
 errors, and exit codes.
 
-## Upgrading from 0.2
+### Upgrading from 0.2
 
 0.3 uses the shared `agents.json` declaration and `agents.resolved` lock in
 project `.agent/` or user `~/.agents/`. It does not read 0.2 state files.
@@ -102,7 +125,7 @@ Add sources again with `skill add`; skill names are positional arguments.
 subscription. Subscribe again with `skill watch add` and acknowledge changes
 with `skill watch seen`.
 
-## Bundled Companion Skill
+### Companion skill
 
 Install the companion that teaches agents this command surface:
 
@@ -116,9 +139,29 @@ For live local development:
 skill add . --path skills/skill-cli --scope user --agent codex --mode edit
 ```
 
-## Development
+## Requirements
 
-Requires macOS 13 or later and Swift 6.3 or later.
+- macOS 13 or later
+- Swift 6.3 or later to build from source
+- Git for source repositories
+
+## Documentation
+
+- [Documentation index](Documentation/README.md)
+- [CLI reference](Documentation/Reference/CLI.md): commands, options, output,
+  state, and JSON schemas
+- [Package architecture](Documentation/Architecture/Package.md): ownership and
+  data flow
+- [Releasing skill](Documentation/Reference/Release.md): dependency, version,
+  and release checks
+
+## Contributing
+
+Read [Contributing](CONTRIBUTING.md) for change guidelines and the full
+validation loop. The [development section](#development) gets a local build
+running.
+
+### Development
 
 ```sh
 swift build
@@ -129,6 +172,6 @@ The package consumes core's `master` branch during development. Release
 preparation changes this to a published version range. The build-time version
 is `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`.
 
-See [Contributing](CONTRIBUTING.md) for the full validation loop,
-[Architecture](Documentation/Architecture/Package.md) for ownership,
-and [Releasing skill](Documentation/Reference/Release.md) for release checks.
+## License
+
+`skill` is available under the [MIT License](LICENSE).
