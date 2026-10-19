@@ -2,7 +2,8 @@
 
 This directory holds transition and cutover records.
 
-There are no migrations yet.
+- [Upgrading from 0.2](From0.2.md): state, commands, and steps for moving 0.2
+  installations to 0.3.
 
 ## Placement
 

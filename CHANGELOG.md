@@ -22,7 +22,7 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
   are positional arguments; updates preview changes before `--apply` writes.
   Existing 0.2 state is not read, and 0.2 installations are never replaced:
   move or remove them, then add sources and watch subscriptions again.
-  See [upgrading from 0.2](README.md#upgrading-from-02).
+  See [upgrading from 0.2](Documentation/Migrations/From0.2.md).
 
 ### Removed
 

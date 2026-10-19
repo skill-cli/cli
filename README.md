@@ -117,15 +117,8 @@ errors, and exit codes.
 
 ### Upgrading from 0.2
 
-0.3 uses the shared `agents.json` declaration and `agents.resolved` lock in
-project `.agent/` or user `~/.agents/`. It does not read 0.2 state files.
-Skills installed by 0.2 are not managed by the new lock, and 0.3 never replaces
-an installation it does not manage: move or remove those skill directories,
-then add their sources again with `skill add`; skill names are positional
-arguments.
-0.2 watch ledgers and the `review` commands are gone: watch is now a
-subscription. Subscribe again with `skill watch add` and acknowledge changes
-with `skill watch seen`.
+0.3 does not read 0.2 state or replace 0.2 installations. Follow
+[Upgrading from 0.2](Documentation/Migrations/From0.2.md) to move them.
 
 ### Companion skill
 
