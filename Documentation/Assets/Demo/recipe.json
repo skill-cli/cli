@@ -1,0 +1,38 @@
+{
+  "design": {
+    "repository": "https://github.com/skill-cli/.github",
+    "path": "DESIGN.md",
+    "revision": "5466cbc0338bcdc19c0ac4234f166956152f4a36",
+    "sha256": "d4626bccc2848fcf9d82e85155b869e85ff05384e7833b06fbe6ef2fb9de0699",
+    "sections": [
+      "Presentation / Typography",
+      "Presentation / Terminal"
+    ]
+  },
+  "dimensions_source": "github-repo-steward/scripts/render_terminal.py defaults",
+  "font_family": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  "font_size": 14,
+  "line_height": 21,
+  "padding": 20,
+  "radius": 10,
+  "title_height": 34,
+  "min_width": 560,
+  "light": {
+    "surface": "#FBFBFE",
+    "bar": "#F0EFF8",
+    "border": "#DCDBEA",
+    "prompt": "#3B35D1",
+    "command": "#16143D",
+    "output": "#3F3D5C",
+    "dim": "#67657F"
+  },
+  "dark": {
+    "surface": "#0E0F24",
+    "bar": "#16183A",
+    "border": "#2A2C55",
+    "prompt": "#8F8AFF",
+    "command": "#F1F0FF",
+    "output": "#C8C7E6",
+    "dim": "#8785AE"
+  }
+}
