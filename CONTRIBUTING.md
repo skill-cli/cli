@@ -39,13 +39,10 @@ owns the required contexts and their activation. The callers in
 | `presentation / presentation` | Committed light/dark SVGs match `Documentation/Assets/Demo/record.json` and `recipe.json` |
 
 Policy and CI run on branch pushes and on opened, synchronized, or reopened
-pull requests. Title edits rerun only policy. Both callers declare manual
-dispatch, but the pinned policy workflow accepts only push and pull-request
-events; a manual Source policy run fails because it has no supported source
-range. Use a branch push or PR event for policy validation and manual CI for
-package, smoke, and presentation checks. These are development checks; follow
-the release checklist for release validation. Weekly Dependabot PRs cover
-Swift packages and GitHub Actions.
+pull requests. Title edits rerun only policy. Both callers support manual
+dispatch; manual policy runs validate the selected head commit. These are
+development checks; follow the release checklist for release validation.
+Weekly Dependabot PRs cover Swift packages and GitHub Actions.
 
 ### Shared command parity
 

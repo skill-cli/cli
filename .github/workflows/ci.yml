@@ -18,7 +18,7 @@ jobs:
   validate:
     permissions:
       contents: read
-    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@301c132794cbee950bfca6ba83987975d1ea6917
+    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@12f1ad84bd9536d6311f7c3e2c92feef54e34a9e
     with:
       runner: macos-26
       package-directory: .
@@ -81,7 +81,7 @@ jobs:
   presentation:
     permissions:
       contents: read
-    uses: agents-tools/.github/.github/workflows/presentation.yml@301c132794cbee950bfca6ba83987975d1ea6917
+    uses: agents-tools/.github/.github/workflows/presentation.yml@12f1ad84bd9536d6311f7c3e2c92feef54e34a9e
     with:
       record: Documentation/Assets/Demo/record.json
       recipe: Documentation/Assets/Demo/recipe.json
