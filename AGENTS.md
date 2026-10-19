@@ -2,6 +2,8 @@
 
 Read `README.md` first for repository purpose, command surface, and development
 entry points.
+Follow the family [change flow](https://github.com/agents-tools/.github/blob/master/MAINTENANCE.md#change-flow).
+`CONTRIBUTING.md` owns the local validation loop and required CI contexts.
 
 ## First-Principles Work
 
@@ -55,4 +57,7 @@ entry points.
 - Call only `SkillOperations`; preserve instruction declarations, locked
   records, and target files.
 - Keep CLI tests in `Tests/CLITests` with explicit subprocess environments.
-- Run `swift test` before handing off behavior changes.
+- Run the development-loop checks in `CONTRIBUTING.md` before handing off
+  behavior or workflow changes, including `swift test` with agent configuration
+  overrides unset. Keep policy, shared package validation, release executable
+  smoke checks, and presentation validation passing.

@@ -1,46 +1,55 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches: [master]
+    branches: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  swift:
-    name: Swift skill CLI
+  validate:
+    permissions:
+      contents: read
+    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@12f1ad84bd9536d6311f7c3e2c92feef54e34a9e
+    with:
+      runner: macos-26
+      package-directory: .
+      format-configuration: .swift-format
+
+  smoke:
     runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          fetch-depth: 0
-
-      - name: Toolchain
-        run: |
-          swift --version
-          xcrun swift-format --version
-
-      - name: Format
-        run: xcrun swift-format lint --strict --configuration .swift-format --recursive Package.swift Sources Tests
+          persist-credentials: false
 
       - name: Release Build
         run: swift build -c release
 
-      - name: Test
-        run: env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
-
       - name: Executable Smoke Checks
+        shell: bash
         run: |
           python3 - <<'PY'
           import pathlib
+          import re
           import subprocess
           import tempfile
 
           executable = pathlib.Path('.build/release/skill').resolve()
+          entry_point = pathlib.Path('Sources/CLI/EntryPoint.swift').read_text()
+          version = re.search(r'static let version = "([^"]+)"', entry_point).group(1)
           with tempfile.TemporaryDirectory(prefix='skill-smoke-') as root:
               env = {
                   'HOME': root,
@@ -57,6 +66,10 @@ jobs:
                                           capture_output=True, text=True, check=True)
                   assert 'USAGE:' in result.stdout and not result.stderr, result
                   print(result.stdout)
+              result = subprocess.run([str(executable), '--version'], cwd=root, env=env,
+                                      capture_output=True, text=True, check=True)
+              assert result.stdout == f'skill {version}\n' and not result.stderr, result
+              print(result.stdout)
               for arguments in [['unknown'], ['unknown', '--help'], ['help', 'unknown']]:
                   result = subprocess.run([str(executable), *arguments], cwd=root, env=env,
                                           capture_output=True, text=True)
@@ -65,7 +78,11 @@ jobs:
                   print(result.stderr)
           PY
 
-      - name: Diff Check
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: git diff --check "$BASE_SHA" HEAD
+  presentation:
+    permissions:
+      contents: read
+    uses: agents-tools/.github/.github/workflows/presentation.yml@12f1ad84bd9536d6311f7c3e2c92feef54e34a9e
+    with:
+      record: Documentation/Assets/Demo/record.json
+      recipe: Documentation/Assets/Demo/recipe.json
+      output-directory: Documentation/Assets/Demo

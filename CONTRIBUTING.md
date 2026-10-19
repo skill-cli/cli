@@ -2,6 +2,8 @@
 
 This SwiftPM package owns the `skill` command layer. Keep changes small and
 aligned with [package ownership](Documentation/Architecture/Package.md).
+Follow the family [change flow](https://github.com/agents-tools/.github/blob/master/MAINTENANCE.md#change-flow)
+for commits, review, and delivery.
 
 ## Development Loop
 
@@ -17,9 +19,32 @@ git diff --check origin/master
 .build/release/skill --help
 ```
 
-Strict formatting must produce zero findings. CI runs the release build on
-every pull request. Executable tests create local Git sources and isolated
-homes; subprocesses use an explicit environment and fixtures clean up on exit.
+Strict formatting must produce zero findings. Executable tests create local
+Git sources and isolated homes; subprocesses use an explicit environment and
+fixtures clean up on exit. For workflow changes, run `actionlint` and
+`git diff --check origin/master`. When changing the README demo, also run the
+[presentation check](Documentation/Reference/ReadmeDemo.md#rendering-and-checking).
+
+## CI
+
+The family [maintenance declaration](https://github.com/agents-tools/.github/blob/master/MAINTENANCE.md#activation-and-required-checks)
+owns the required contexts and their activation. The callers in
+`.github/workflows/` pin the shared workflows to a reviewed full commit SHA.
+
+| Context | Validation |
+| --- | --- |
+| `policy / policy` | Conventional Commit subjects, PR titles, and added-line policy |
+| `validate / swift-package` | Strict formatting, debug build, isolated tests, release build, and diff check on macOS 26 |
+| `smoke` | Release build, help output, version from `BuildInfo.version`, and unknown-command exit 64 in an isolated environment |
+| `presentation / presentation` | Committed light/dark SVGs match `Documentation/Assets/Demo/record.json` and `recipe.json` |
+
+Policy and CI run on branch pushes and on opened, synchronized, or reopened
+pull requests. Title edits rerun only policy. Both callers support manual
+dispatch; manual policy runs validate the selected head commit. These are
+development checks; follow the release checklist for release validation.
+Weekly Dependabot PRs cover Swift packages and GitHub Actions.
+
+### Shared command parity
 
 To compare the shared command contract with a read-only `agents` checkout:
 
@@ -46,7 +71,6 @@ links, executable-mode changes, removals, and multiline Git diagnostics.
 - Keep instruction state and target files untouched by skill commands.
 - Update the CLI reference, schemas, companion skill, and architecture when
   their contracts change. Keep historical records in their owning directories.
-- Use Conventional Commits with local signing and one logical change per commit.
 
 Core follows `master` during development. To test an authorized core worktree
 without changing the manifest:

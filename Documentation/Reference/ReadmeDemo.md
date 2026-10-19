@@ -40,14 +40,21 @@ records its revision and digest. Review the recipe against that revision
 before rendering. Dimensions use the terminal renderer's defaults. The recipe
 has no dependency on a local organization checkout.
 
-Set `STEWARD` to the installed `github-repo-steward` skill directory, then run:
+Use the renderer at the same shared revision as the `presentation` job in
+[CI](../../.github/workflows/ci.yml). Set `standard_checkout` to a local
+`agents-tools/.github` checkout containing that commit, then extract its
+renderer into the ignored build directory:
 
 ```sh
-python3 "$STEWARD/scripts/render_terminal.py" \
+standard_checkout=/path/to/agents-tools/.github
+standard_revision=$(rg --only-matching --replace '$1' 'presentation.yml@([0-9a-f]{40})' .github/workflows/ci.yml)
+mkdir -p .build/presentation-standard
+git -C "$standard_checkout" archive "$standard_revision" Scripts/vendor | tar -x -C .build/presentation-standard
+python3 -B -E -s .build/presentation-standard/Scripts/vendor/render_terminal.py \
   --record Documentation/Assets/Demo/record.json \
   --spec Documentation/Assets/Demo/recipe.json \
   --output-dir Documentation/Assets/Demo
-python3 "$STEWARD/scripts/render_terminal.py" \
+python3 -B -E -s .build/presentation-standard/Scripts/vendor/render_terminal.py \
   --record Documentation/Assets/Demo/record.json \
   --spec Documentation/Assets/Demo/recipe.json \
   --output-dir Documentation/Assets/Demo --check
