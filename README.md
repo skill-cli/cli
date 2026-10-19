@@ -10,7 +10,7 @@
 <h1 align="center">skill</h1>
 
 <p align="center">
-  A package manager for agent skills.
+  Install and update agent skills, resolved to exact versions.
 </p>
 
 <p align="center">
