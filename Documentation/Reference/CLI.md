@@ -71,7 +71,10 @@ Unsupported options are usage errors.
 
 `source` is a local path, Git URL or shorthand accepted by core, well-known
 HTTP source, or an existing declaration alias. Add writes the declaration,
-installations, and lock together.
+installations, and lock together. A skill directory, file, or link that the
+scope's lock does not manage, including one installed by skill 0.2, is never
+replaced: add and install stop before any change and name the path, so move or
+remove it first.
 
 `<names>`: Skills to add. Omit to add the source's only skill, or to list the
 choices when it has several. Explicit names select those skills. `--all` selects

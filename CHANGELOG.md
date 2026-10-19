@@ -7,6 +7,8 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-19
+
 ### Added
 
 - Watch subscriptions with status, file diffs, and explicit acknowledgement
@@ -18,7 +20,8 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 - Rebuilt the CLI on shared agents core with `agents.json` declarations and
   `agents.resolved` locks in project `.agent/` or user `~/.agents/`. Skill names
   are positional arguments; updates preview changes before `--apply` writes.
-  Existing 0.2 state is not read: add sources and watch subscriptions again.
+  Existing 0.2 state is not read, and 0.2 installations are never replaced:
+  move or remove them, then add sources and watch subscriptions again.
   See [upgrading from 0.2](README.md#upgrading-from-02).
 
 ### Removed
@@ -28,5 +31,8 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 ### Fixed
 
 - Git failures now include concise diagnostics and recovery guidance.
+- Adding or installing a skill never replaces a directory, file, or link that
+  the scope's lock does not manage, such as a hand-written skill.
 
-[Unreleased]: https://github.com/skill-cli/cli/compare/v0.2.2...master
+[Unreleased]: https://github.com/skill-cli/cli/compare/v0.3.0...master
+[0.3.0]: https://github.com/skill-cli/cli/compare/v0.2.2...v0.3.0
