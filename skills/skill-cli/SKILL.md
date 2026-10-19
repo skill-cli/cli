@@ -61,6 +61,16 @@ skill add <source> --from 1.2.3 --to 1.8.0
 Without a requirement, core selects the latest version tag or the default
 branch when no tags exist.
 
+A source can carry the same choices as typed selectors: `@branch:`, `@ref:` or
+`@revision:`, `@exact:`, `@from:`, `@minor:` (up to next minor), `@path:`, and
+`@skill:` for one skill name. Selectors and options that give the same field
+must agree.
+
+```sh
+skill add larksuite/cli@from:1.0.0@skill:lark-base
+skill add owner/repo@branch:main@path:skills --all
+```
+
 ## Maintain Skills
 
 ```sh
