@@ -47,7 +47,10 @@ final class CLIFixture {
       .deletingLastPathComponent().deletingLastPathComponent()
     // SwiftPM builds the executable dependency for the active test configuration.
     let testBinary = URL(fileURLWithPath: CommandLine.arguments[0])
+    // The test bundle sits beside the executable in any scratch path, including release validation.
+    let bundleProducts = Bundle(for: ProductsLocator.self).bundleURL.deletingLastPathComponent()
     let candidates = [
+      bundleProducts.appendingPathComponent("skill"),
       testBinary.deletingLastPathComponent().appendingPathComponent("skill"),
       testBinary.deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("skill"),
@@ -142,3 +145,5 @@ final class CLIFixture {
       stderr: String(contentsOf: stderr, encoding: .utf8), status: process.terminationStatus)
   }
 }
+
+private final class ProductsLocator {}
