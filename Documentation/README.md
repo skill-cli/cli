@@ -12,9 +12,7 @@ This directory indexes repository-native documentation for `skill-cli`.
 - `Archive/`: retired or superseded material kept for record
 - `Reference/`: supporting reference material and examples
 - `Assets/`: the logo in light and dark appearances, rendered from the skill
-  icon in [skill-cli/.github](https://github.com/skill-cli/.github/blob/master/DESIGN.md),
-  and the README terminal demo in light and dark appearances under
-  [Assets/Demo/](Assets/Demo/), with its recording, provenance, and design recipe
+  icon in [skill-cli/.github](https://github.com/skill-cli/.github/blob/master/DESIGN.md)
 
 Target-level API documentation belongs with the SwiftPM target it documents,
 normally under `Sources/<Target>/<Target>.docc/`. Link to those catalogs from
@@ -36,3 +34,5 @@ default.
 - [Release](Reference/Release.md): core dependency, version, signed publication, and tap validation
 - [README demo](Reference/ReadmeDemo.md): recording and rendering the terminal
   session
+- [README terminal assets](../.github/assets/terminal/): the scripted session,
+  generated recording, and light/dark SVGs

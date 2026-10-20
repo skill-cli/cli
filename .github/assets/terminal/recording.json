@@ -1,0 +1,29 @@
+{
+  "title": "skill",
+  "steps": [
+    {
+      "command": "skill add ~/skills review commit",
+      "output": "Installed commit for claude-code, codex (link).\nInstalled review for claude-code, codex (link)."
+    },
+    {
+      "command": "skill watch add ~/skills",
+      "output": "Watching local:~/skills from c132199."
+    },
+    {
+      "command": "printf 'Check edge cases.\\n' >> ~/skills/review/SKILL.md",
+      "output": ""
+    },
+    {
+      "command": "git -C ~/skills commit -qam \"Expand review\"",
+      "output": ""
+    },
+    {
+      "command": "skill watch",
+      "output": "local:~/skills  1 commit since c132199 (now a97f57f)\n  ~ changed  review   1 file"
+    },
+    {
+      "command": "skill update --apply",
+      "output": "~ changed  review  local:~/skills  c132199 -> a97f57f\n--- a/review/SKILL.md\n+++ b/review/SKILL.md\n@@ -4,3 +4,4 @@\n ---\n \n Read the diff.\n+Check edge cases.\n= repinned  commit  local:~/skills  c132199 -> a97f57f\nUpdated commit for claude-code, codex.\nUpdated review for claude-code, codex."
+    }
+  ]
+}

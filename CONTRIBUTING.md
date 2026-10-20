@@ -23,7 +23,7 @@ Strict formatting must produce zero findings. Executable tests create local
 Git sources and isolated homes; subprocesses use an explicit environment and
 fixtures clean up on exit. For workflow changes, run `actionlint` and
 `git diff --check origin/master`. When changing the README demo, also run the
-[presentation check](Documentation/Reference/ReadmeDemo.md#rendering-and-checking).
+[presentation check](Documentation/Reference/ReadmeDemo.md#local-regeneration).
 
 ## CI
 
@@ -36,7 +36,7 @@ owns the required contexts and their activation. The callers in
 | `policy / policy` | Conventional Commit subjects, PR titles, and added-line policy |
 | `validate / swift-package` | Strict formatting, debug build, isolated tests, release build, and diff check on macOS 26 |
 | `smoke` | Release build, help output, version from `BuildInfo.version`, and unknown-command exit 64 in an isolated environment |
-| `presentation / presentation` | Committed light/dark SVGs match `Documentation/Assets/Demo/record.json` and `recipe.json` |
+| `presentation / presentation` | Built executable re-records `.github/assets/terminal/script.yml`; recording and both SVGs match byte for byte |
 
 Policy and CI run on branch pushes and on opened, synchronized, or reopened
 pull requests. Title edits rerun only policy. Both callers support manual
