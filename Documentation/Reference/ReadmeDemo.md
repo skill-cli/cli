@@ -12,14 +12,16 @@ environment. The pinned organization standard supplies the toolchain,
 DESIGN.md, and fonts. CI compares the recording and both SVGs byte for byte
 and fails on any difference. The SVGs outline text in Google Sans Code.
 
-When regeneration succeeds but the files differ, CI uploads the regenerated
-directory as `presentation-terminal`. Download it, review the recording and
-both appearances, and commit its files under `.github/assets/terminal/`.
+When regeneration succeeds but the files differ, CI uploads artifact
+`presentation-terminal` containing `presentation-terminal.tar`, an archive of
+the regenerated directory that keeps file modes. Download it, extract it with
+`tar -xf presentation-terminal.tar -C .github/assets/terminal`, review the
+recording and both appearances, and commit the files.
 
 ## Local regeneration
 
 From a task worktree, build `.build/release/skill` with `swift build -c release`,
-then follow the toolchain reference's [Local regeneration](https://github.com/showxu/skills/blob/1b72bb9e104586267d0fbdd333df80a26fc81cc0/skills/github-readme-design/references/renderers.md#local-regeneration)
+then follow the toolchain reference's [Local regeneration](https://github.com/showxu/skills/blob/v0.1.0/skills/github-readme-design/references/renderers.md#local-regeneration)
 procedure using the package, DESIGN.md, and fonts selected by the standard
 pinned in CI. Keep temporary inputs under ignored `.build/`. Run the terminal
 check and review both SVGs before committing the script, recording, and exports
