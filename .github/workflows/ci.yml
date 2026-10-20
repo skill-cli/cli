@@ -18,7 +18,7 @@ jobs:
   validate:
     permissions:
       contents: read
-    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@12f1ad84bd9536d6311f7c3e2c92feef54e34a9e
+    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@aaddcb297cecb9e9273c807214e547d763cd85b4
     with:
       runner: macos-26
       package-directory: .
