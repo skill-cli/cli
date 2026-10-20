@@ -36,7 +36,14 @@ owns the required contexts and their activation. The callers in
 | `policy / policy` | Conventional Commit subjects, PR titles, and added-line policy |
 | `validate / swift-package` | Strict formatting, debug build, isolated tests, release build, and diff check on macOS 26 |
 | `smoke` | Release build, help output, version from `BuildInfo.version`, and unknown-command exit 64 in an isolated environment |
-| `presentation / presentation` | Built executable re-records `.github/assets/terminal/script.yml`; recording and both SVGs match byte for byte |
+| `presentation / presentation` | Built executable re-records `.github/assets/terminal/script.yml`; recording, both SVGs and the catalog-driven social preview match byte for byte |
+
+The committed [social preview](.github/assets/social-preview/social-preview.png)
+uses the DESIGN, fonts, catalog and light-page icon selected by the presentation
+workflow pin. Follow [presentation reproduction](Documentation/Reference/ReadmeDemo.md)
+for local regeneration and checks. The agents-tools family policy and Swift CI
+pins stay at skill-cli's adopted family revision; presentation uses skill-cli's
+organization standard.
 
 Policy and CI run on branch pushes and on opened, synchronized, or reopened
 pull requests. Title edits rerun only policy. Both callers support manual

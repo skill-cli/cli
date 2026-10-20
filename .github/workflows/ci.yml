@@ -89,7 +89,7 @@ jobs:
     needs: smoke
     permissions:
       contents: read
-    uses: skill-cli/.github/.github/workflows/presentation.yml@fd16f1936cfa3cad5ff6b31cc7e3cdd57b7132d4 # v0.1.0
+    uses: skill-cli/.github/.github/workflows/presentation.yml@448cd572acf7e2464c7e56b609c0a89349b9c06b
     with:
       runner: macos-26
       executable-artifact: executable

@@ -33,7 +33,9 @@ default.
   [skill-cli/.github](https://github.com/skill-cli/.github/blob/master/DESIGN.md)
 - [CLI](Reference/CLI.md): commands, output, state, and JSON schemas
 - [Release](Reference/Release.md): core dependency, version, signed publication, and tap validation
-- [README demo](Reference/ReadmeDemo.md): recording and rendering the terminal
-  session
+- [README presentation](Reference/ReadmeDemo.md): recording and rendering the
+  terminal session and repository social preview
 - [README terminal assets](../.github/assets/terminal/): the scripted session,
   generated recording, and light/dark SVGs
+- [Social preview](../.github/assets/social-preview/social-preview.png): the
+  catalog-driven repository card checked by presentation CI.
