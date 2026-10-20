@@ -18,7 +18,7 @@ jobs:
   validate:
     permissions:
       contents: read
-    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@aaddcb297cecb9e9273c807214e547d763cd85b4
+    uses: agents-tools/.github/.github/workflows/swift-package-ci.yml@1dd5eae4c47bb6063b951066989aa6c46703b946
     with:
       runner: macos-26
       package-directory: .
@@ -89,7 +89,7 @@ jobs:
     needs: smoke
     permissions:
       contents: read
-    uses: skill-cli/.github/.github/workflows/presentation.yml@5d5e9fb586118d8f1976aae613199958287d944b
+    uses: skill-cli/.github/.github/workflows/presentation.yml@fd16f1936cfa3cad5ff6b31cc7e3cdd57b7132d4
     with:
       runner: macos-26
       executable-artifact: executable
