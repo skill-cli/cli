@@ -1,0 +1,32 @@
+title: skill
+executable: skill
+files:
+  skills/commit/SKILL.md: |
+    ---
+    name: commit
+    description: README demo skill
+    ---
+
+    Describe the change.
+  skills/review/SKILL.md: |
+    ---
+    name: review
+    description: README demo skill
+    ---
+
+    Read the diff.
+steps:
+  - run: git init --quiet --initial-branch=main && git add . && git commit --quiet -m "Add demo skills"
+    cwd: ~/skills
+    show: false
+  - run: skill add ~/skills review commit
+  - run: skill watch add ~/skills
+  - run: printf 'Check edge cases.\n' >> ~/skills/review/SKILL.md
+  - run: git -C ~/skills commit -qam "Expand review"
+  - run: skill watch
+  - run: skill update --apply
+expect:
+  - file: ~/project/.agents/skills/review/SKILL.md
+    contains: Check edge cases.
+  - file: ~/project/.claude/skills/review/SKILL.md
+    contains: Check edge cases.

@@ -38,6 +38,13 @@ jobs:
       - name: Release Build
         run: swift build -c release
 
+      - name: Upload Executable
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: executable
+          path: .build/release/skill
+          if-no-files-found: error
+
       - name: Executable Smoke Checks
         shell: bash
         run: |
@@ -79,10 +86,11 @@ jobs:
           PY
 
   presentation:
+    needs: smoke
     permissions:
       contents: read
-    uses: agents-tools/.github/.github/workflows/presentation.yml@12f1ad84bd9536d6311f7c3e2c92feef54e34a9e
+    uses: skill-cli/.github/.github/workflows/presentation.yml@5d5e9fb586118d8f1976aae613199958287d944b
     with:
-      record: Documentation/Assets/Demo/record.json
-      recipe: Documentation/Assets/Demo/recipe.json
-      output-directory: Documentation/Assets/Demo
+      runner: macos-26
+      executable-artifact: executable
+      executable-path: skill

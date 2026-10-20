@@ -52,8 +52,8 @@ upstream update:
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="Documentation/Assets/Demo/Demo-dark.svg">
-    <img src="Documentation/Assets/Demo/Demo-light.svg" alt="Recorded terminal: install review and commit, watch their source, commit new review guidance, then inspect and apply the update.">
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/terminal/terminal-dark.svg">
+    <img src=".github/assets/terminal/terminal-light.svg" alt="Recorded terminal: install review and commit, watch their source, commit new review guidance, then inspect and apply the update.">
   </picture>
 </p>
 
