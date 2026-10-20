@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://github.com/skill-cli/cli">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="Documentation/Assets/Logo.png">
-      <img src="Documentation/Assets/Logo-dark.png" width="160" alt="skill logo">
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo/logo-dark.png">
+      <img src=".github/assets/logo/logo-light.png" width="160" alt="skill logo">
     </picture>
   </a>
 </p>
