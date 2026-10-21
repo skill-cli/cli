@@ -27,8 +27,9 @@ changelog entry in the requirement's final delivery candidate.
    Use the actual released version and the next minor version with patch zero.
    Once core is `1.x`, use `from:` to allow compatible updates up to the next
    major. Resolve dependencies and commit `Package.resolved` with the manifest.
-2. Choose the CLI version using SemVer. Breaking changes during `0.x` bump the
-   minor version. Update `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`;
+2. Choose the CLI version under the family
+   [versioning policy](https://github.com/agents-tools/.github/blob/master/VERSIONING.md).
+   Update `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`;
    it is compiled into the binary and works in source archives without Git.
    Tests compare output against this constant, not a duplicate version literal.
 3. Follow the family [versioning policy](https://github.com/agents-tools/.github/blob/master/VERSIONING.md).
