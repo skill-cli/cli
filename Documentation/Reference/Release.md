@@ -12,6 +12,10 @@ and publishing each refuse to run unless the earlier blocks set their markers.
 
 ## Prepare the Candidate
 
+Release timing follows the family [versioning policy](https://github.com/agents-tools/.github/blob/master/VERSIONING.md),
+which defers to the governing delivery workflow. Include the version change and
+changelog entry in the requirement's final delivery candidate.
+
 1. In a task worktree based on current `origin/master`, select a published core
    version. Replace the development `branch: "master"` dependency with a
    minor-bounded range while core is `0.x`, for example:
