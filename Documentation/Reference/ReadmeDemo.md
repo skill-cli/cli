@@ -22,7 +22,7 @@ recording, both terminal appearances and the preview, and commit the files.
 ## Local regeneration
 
 From a task worktree, build `.build/release/skill` with `swift build -c release`,
-then follow the toolchain reference's [Local regeneration](https://github.com/showxu/skills/blob/e5a50c34bf66264a436288f96e44db9caa305912/skills/github-readme-design/references/renderers.md#local-regeneration)
+then follow the toolchain reference's [Local regeneration](https://github.com/showxu/skills/blob/9e5d7268232b78f5fbef21ccfb9e3a079f2ef7e3/skills/github-readme-design/references/renderers.md#local-regeneration)
 procedure using the package, DESIGN.md, and fonts selected by the standard
 pinned in CI. Keep temporary inputs under ignored `.build/`. Run the terminal
 check and review both SVGs before committing the script, recording, and exports
@@ -41,12 +41,12 @@ procedure above, keeping temporary inputs under ignored `.build/`:
 
 ```sh
 node "$toolchain_dir/src/cli.ts" social-preview render \
-  --design "$standard_dir/DESIGN.md" --fonts "$standard_dir/Brand/Fonts" \
+  --design "$standard_dir/DESIGN.md" --fonts "$standard_dir/.github/design/fonts" \
   --catalog "$standard_dir/profile/catalog.json" --repository cli \
   --icon .github/assets/logo/logo-light.png \
   --out .github/assets/social-preview/social-preview.png
 node "$toolchain_dir/src/cli.ts" social-preview check \
-  --design "$standard_dir/DESIGN.md" --fonts "$standard_dir/Brand/Fonts" \
+  --design "$standard_dir/DESIGN.md" --fonts "$standard_dir/.github/design/fonts" \
   --catalog "$standard_dir/profile/catalog.json" --repository cli \
   --icon .github/assets/logo/logo-light.png --assets .github/assets/social-preview
 ```
