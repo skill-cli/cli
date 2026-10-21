@@ -149,6 +149,8 @@ skill add . --path skills/skill-cli --scope user --agent codex --mode edit
   data flow
 - [Releasing skill](Documentation/Reference/Release.md): dependency, version,
   and release checks
+- [Presentation assets](Documentation/Reference/ReadmeDemo.md): README terminal
+  session and repository social preview
 - [Changelog](CHANGELOG.md): unreleased changes and earlier releases
 
 ## Contributing

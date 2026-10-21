@@ -60,4 +60,5 @@ Follow the family [change flow](https://github.com/agents-tools/.github/blob/mas
 - Run the development-loop checks in `CONTRIBUTING.md` before handing off
   behavior or workflow changes, including `swift test` with agent configuration
   overrides unset. Keep policy, shared package validation, release executable
-  smoke checks, and presentation validation passing.
+  smoke checks, and terminal/social-preview validation passing. Use the pinned
+  organization standard for both presentation assets.
