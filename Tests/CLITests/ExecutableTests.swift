@@ -78,7 +78,7 @@ struct ExecutableTests {
     let applied = try fixture.success(["update", "--apply"] + scopeArguments)
     let diffIndex = try #require(applied.stdout.range(of: "+Updated upstream content")?.lowerBound)
     let appliedIndex = try #require(
-      applied.stdout.range(of: "Updated demo for codex.\n")?.lowerBound)
+      applied.stdout.range(of: "Updated demo for codex:")?.lowerBound)
     #expect(diffIndex < appliedIndex)
     #expect(
       try Data(contentsOf: file) == Data(base64Encoded: try #require(after["base64"] as? String)))

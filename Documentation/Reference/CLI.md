@@ -225,9 +225,11 @@ Human update item lines use `+ new`, `~ changed`, `= repinned`, and `- removed`.
 Repinned means only the pin moved: content, executable flags, and managed
 membership are identical. Items sort in that order, then by name. Revisions use
 seven characters; a resolved version displays as `1.2.0 (abc1234)`. Without a
-version, the revision is shown alone; absent pins and live edit records show
-`none`. Item summaries omit hashes. Managed membership determines whether a
-pinless skill is new or removed, even when there is no physical file difference.
+version, the revision is shown alone; an absent side of an addition or removal
+shows `none`. When both sides have neither a version nor a revision, as with
+live edit links, the entire pin suffix is omitted. Item summaries omit hashes.
+Managed membership determines whether a pinless skill is new or removed, even
+when there is no physical file difference.
 
 For example, `skill update` can report a pin change without a content diff:
 
@@ -283,7 +285,7 @@ unchanged recipient can still receive updated files. Shared paths retain a row
 for each agent while file diffs appear once.
 
 ```text
-~ changed  pdf  local:~/Developer/team-rules  none -> none
+~ changed  pdf  local:~/Developer/team-rules
   = unchanged  claude-code (edit)  .claude/skills/pdf
   - removed  codex (edit)  .agents/skills/pdf
   + added  cursor (edit)  .agents/skills/pdf
@@ -291,15 +293,18 @@ Preview only. Run again with --apply to write these changes.
 ```
 
 When `agents.resolved` is missing, the preview begins with
-`Lock missing: prior skill membership is unrecorded.` Membership additions do
+`Lock missing: earlier membership is unknown.` Membership additions do
 not imply that target files were absent. Applying still rejects existing
 content that the scope does not manage, including an already-correct live link.
 A recorded but missing target retains its before membership.
 
 `--apply` prints the preview before core writes. After success, completion lines
 use `Removed`, `Added`, and `Updated` for removed, new, and retained recipients
-of changed skills, respectively. When a resolved version is available, they
-include the old and new pins:
+of changed skills, respectively, with agents in alphabetical order. `Updated`
+includes the old and new pins when either side has a version or revision, using
+the same pin format as the preview. With no pins it prints
+`Updated <skill> for <agents>.` Additions and removals print
+`Added <skill> for <agents>.` and `Removed <skill> for <agents>.`
 
 ```text
 ~ changed  pdf  local:~/Developer/team-rules  1.2.0 (abc1234) -> 1.3.0 (def5678)
@@ -319,7 +324,7 @@ print:
 
 ```text
 Installed pdf for claude-code, codex (link).
-Updated pdf for claude-code, codex.
+Updated pdf for claude-code, codex: 6c09c94 -> 9661957.
 Removed pdf for claude-code, codex.
 ```
 

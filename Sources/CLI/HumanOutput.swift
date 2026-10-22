@@ -95,7 +95,10 @@ struct HumanItem {
   }
 
   func render(paths: HumanPaths) -> String {
-    "\(change.label)  \(Terminal.line(name))  \(paths.source(source))  \(Terminal.line(before)) -> \(Terminal.line(after))\n"
+    let pins =
+      before == "none" && after == "none"
+      ? "" : "  \(Terminal.line(before)) -> \(Terminal.line(after))"
+    return "\(change.label)  \(Terminal.line(name))  \(paths.source(source))\(pins)\n"
   }
 }
 

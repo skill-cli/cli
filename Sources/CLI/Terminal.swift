@@ -151,7 +151,7 @@ enum Terminal {
   ) {
     let items = HumanItem.ordered(skillItems(results))
     if results.contains(where: \.lockMissing) {
-      write("Lock missing: prior skill membership is unrecorded.\n")
+      write("Lock missing: earlier membership is unknown.\n")
     }
     if items.isEmpty { write("No skill changes.\n") }
     for item in items {

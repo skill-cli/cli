@@ -71,7 +71,8 @@ struct UpdateReportingTests {
     let applied = try fixture.success(["update", "--apply"]).stdout
     #expect(applied.hasPrefix("~ changed  pdf"))
     #expect(applied.contains("mode pdf/SKILL.md: 755 -> 644\n"))
-    #expect(applied.hasSuffix("Updated pdf for codex.\n"))
+    let revision = try #require(item["oldRevision"] as? String).prefix(7)
+    #expect(applied.hasSuffix("Updated pdf for codex: \(revision) -> \(revision).\n"))
   }
 
   @Test func membershipIncludesSharedPathsAndUnchangedRecipients() throws {
@@ -94,6 +95,7 @@ struct UpdateReportingTests {
     #expect(rows[2]["after"] as? [String: String] == installed)
     #expect(rows[1]["path"] as? String == rows[2]["path"] as? String)
     let preview = try fixture.success(["update"]).stdout
+    #expect(preview.hasPrefix("~ changed  pdf  local:\(fixture.source.path)\n"))
     #expect(preview.contains("  = unchanged  claude-code (edit)  .claude/skills/pdf\n"))
     #expect(preview.contains("  - removed  codex (edit)  .agents/skills/pdf\n"))
     #expect(preview.contains("  + added  cursor (edit)  .agents/skills/pdf\n"))
@@ -113,7 +115,7 @@ struct UpdateReportingTests {
       })
   }
 
-  @Test func missingLockReportsUnrecordedMembershipAndApplyRejectsUnmanagedLink() throws {
+  @Test func missingLockReportsUnknownMembershipAndApplyRejectsUnmanagedLink() throws {
     let fixture = try CLIFixture()
     try fixture.skill("pdf")
     try fixture.success(["add", fixture.source.path, "pdf", "--mode", "edit", "--agent", "codex"])
@@ -129,7 +131,9 @@ struct UpdateReportingTests {
     #expect(row["before"] as? [String: String] == ["kind": "absent"])
     #expect(row["after"] as? [String: String] == ["kind": "installed", "mode": "edit"])
     let preview = try fixture.success(["update"]).stdout
-    #expect(preview.hasPrefix("Lock missing: prior skill membership is unrecorded.\n+ new  pdf"))
+    #expect(preview.hasPrefix("Lock missing: earlier membership is unknown.\n+ new  pdf"))
+    #expect(preview.components(separatedBy: "Lock missing:").count == 2)
+    #expect(preview.contains("+ new  pdf  local:\(fixture.source.path)\n"))
     #expect(preview.contains("  + added  codex (edit)  .agents/skills/pdf\n"))
     let failed = try fixture.run(["update", "--apply"])
     #expect(failed.status == 1)
@@ -146,7 +150,7 @@ struct UpdateReportingTests {
     try fixture.success(["add", fixture.source.path, "--all", "--mode", "edit", "--agent", "codex"])
     try fixture.skill("review")
     let added = try fixture.success(["update", "--apply"]).stdout
-    #expect(added.hasPrefix("+ new  review"))
+    #expect(added.hasPrefix("+ new  review  local:\(fixture.source.path)\n"))
     #expect(added.contains("  + added  codex (edit)  .agents/skills/review\n"))
     #expect(added.hasSuffix("Added review for codex.\n"))
     try FileManager.default.removeItem(
@@ -155,7 +159,7 @@ struct UpdateReportingTests {
     let item = try updateItem(fixture.success(["update", "--json"]).json())
     #expect((item["files"] as? [Any])?.isEmpty == true)
     let removed = try fixture.success(["update", "--apply"]).stdout
-    #expect(removed.hasPrefix("- removed  pdf"))
+    #expect(removed.hasPrefix("- removed  pdf  local:\(fixture.source.path)\n"))
     #expect(removed.contains("  - removed  codex (edit)  .agents/skills/pdf\n"))
     #expect(removed.hasSuffix("Removed pdf for codex.\n"))
   }
@@ -201,7 +205,7 @@ struct UpdateReportingTests {
     #expect(applied.contains("1.0.0 (\(old)) -> none\n"))
     #expect(
       applied.hasSuffix(
-        "Removed pdf for codex: 1.0.0 (\(old)) -> none.\nAdded review for codex: none -> 1.1.0 (\(new)).\n"
+        "Removed pdf for codex.\nAdded review for codex.\n"
       ))
   }
 

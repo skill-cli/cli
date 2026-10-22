@@ -23,7 +23,7 @@
     },
     {
       "command": "skill update --apply",
-      "output": "~ changed  review  local:~/skills  c132199 -> a97f57f\n  = unchanged  claude-code (link)  .claude/skills/review\n  = unchanged  codex (link)  .agents/skills/review\n--- a/review/SKILL.md\n+++ b/review/SKILL.md\n@@ -4,3 +4,4 @@\n ---\n \n Read the diff.\n+Check edge cases.\n= repinned  commit  local:~/skills  c132199 -> a97f57f\n  = unchanged  claude-code (link)  .claude/skills/commit\n  = unchanged  codex (link)  .agents/skills/commit\nUpdated commit for claude-code, codex.\nUpdated review for claude-code, codex."
+      "output": "~ changed  review  local:~/skills  c132199 -> a97f57f\n  = unchanged  claude-code (link)  .claude/skills/review\n  = unchanged  codex (link)  .agents/skills/review\n--- a/review/SKILL.md\n+++ b/review/SKILL.md\n@@ -4,3 +4,4 @@\n ---\n \n Read the diff.\n+Check edge cases.\n= repinned  commit  local:~/skills  c132199 -> a97f57f\n  = unchanged  claude-code (link)  .claude/skills/commit\n  = unchanged  codex (link)  .agents/skills/commit\nUpdated commit for claude-code, codex: c132199 -> a97f57f.\nUpdated review for claude-code, codex: c132199 -> a97f57f."
     }
   ]
 }

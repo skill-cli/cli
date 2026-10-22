@@ -85,22 +85,24 @@ extension Terminal {
       let removed = before.subtracting(after)
       let added = after.subtracting(before)
       let retained = after.intersection(before)
-      let versions: String
-      if result.oldVersion != nil || result.newVersion != nil {
+      let pins: String
+      if result.oldVersion != nil || result.newVersion != nil
+        || result.oldRevision != nil || result.newRevision != nil
+      {
         let old = HumanItem.pin(revision: result.oldRevision, version: result.oldVersion)
         let new = HumanItem.pin(revision: result.newRevision, version: result.newVersion)
-        versions = ": \(line(old)) -> \(line(new))"
+        pins = ": \(line(old)) -> \(line(new))"
       } else {
-        versions = ""
+        pins = ""
       }
       if !removed.isEmpty {
-        write("Removed \(line(result.skill)) for \(recipients(Array(removed)))\(versions).\n")
+        write("Removed \(line(result.skill)) for \(recipients(Array(removed))).\n")
       }
       if !added.isEmpty {
-        write("Added \(line(result.skill)) for \(recipients(Array(added)))\(versions).\n")
+        write("Added \(line(result.skill)) for \(recipients(Array(added))).\n")
       }
       if !retained.isEmpty {
-        write("Updated \(line(result.skill)) for \(recipients(Array(retained)))\(versions).\n")
+        write("Updated \(line(result.skill)) for \(recipients(Array(retained)))\(pins).\n")
       }
     }
   }
