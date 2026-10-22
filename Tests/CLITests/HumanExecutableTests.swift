@@ -29,10 +29,12 @@ struct HumanExecutableTests {
     #expect(!preview.contains("hash:") && !preview.contains("revision:"))
     #expect(!preview.contains("--- a/unchanged/"))
     let applied = try fixture.success(["update", "--apply"]).stdout
+    let pins = "\(revision.prefix(7)) -> \(newRevision.prefix(7))"
     #expect(
       applied.hasSuffix(
-        "Updated pdf for claude-code, codex.\nUpdated unchanged for claude-code, codex.\n"))
-    #expect(applied.components(separatedBy: "Updated pdf for claude-code, codex.\n").count == 2)
+        "Updated pdf for claude-code, codex: \(pins).\nUpdated unchanged for claude-code, codex: \(pins).\n"
+      ))
+    #expect(applied.components(separatedBy: "Updated pdf for claude-code, codex:").count == 2)
   }
 
   @Test func homeSourcesAndUsageRemedies() throws {

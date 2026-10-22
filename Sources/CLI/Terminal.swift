@@ -131,34 +131,35 @@ enum Terminal {
 
   static func skillItems(_ results: [UpdateResult]) -> [HumanItem] {
     results.filter(\.changed).map { result in
-      let live =
-        result.oldHash == nil && result.newHash == nil
-        && result.oldRevision == nil && result.newRevision == nil
       return HumanItem(
         name: result.skill, source: result.sourceIdentity,
-        existed: result.oldHash != nil || result.oldRevision != nil
-          || (live && (result.changes.isEmpty || result.changes.contains { $0.before != nil })),
-        exists: result.newHash != nil || result.newRevision != nil
-          || (live && (result.changes.isEmpty || result.changes.contains { $0.after != nil })),
+        existed: result.membership.contains { $0.before != .absent },
+        exists: result.membership.contains { $0.after != .absent },
         oldRevision: result.oldRevision, newRevision: result.newRevision,
+        oldVersion: result.oldVersion, newVersion: result.newVersion,
         sameContent: result.oldHash != nil && result.oldHash == result.newHash,
-        otherChanges: result.changes.contains {
-          if case .symbolicLink = $0.before, case .symbolicLink = $0.after { return false }
-          return true
-        })
+        otherChanges: result.membership.contains { $0.before != $0.after }
+          || result.changes.contains {
+            if case .symbolicLink = $0.before, case .symbolicLink = $0.after { return false }
+            return true
+          })
     }
   }
 
   static func differences(
-    _ results: [UpdateResult], previous: SkillOutputInventory, paths: HumanPaths = HumanPaths()
+    _ results: [UpdateResult], paths: HumanPaths = HumanPaths()
   ) {
     let items = HumanItem.ordered(skillItems(results))
+    if results.contains(where: \.lockMissing) {
+      write("Lock missing: earlier membership is unknown.\n")
+    }
     if items.isEmpty { write("No skill changes.\n") }
     for item in items {
       write(item.render(paths: paths))
       for result in results where result.skill == item.name && result.sourceIdentity == item.source
       {
-        skillFileDifferences(result, previous: previous, paths: paths)
+        skillMembership(result.membership, paths: paths)
+        skillFileDifferences(result, paths: paths)
       }
     }
   }

@@ -31,12 +31,14 @@ struct SkillOutputExecutableTests {
       at: nested.deletingLastPathComponent(), withIntermediateDirectories: true)
     try Data("Before\n".utf8).write(to: nested)
     try fixture.commit()
+    let oldRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     try fixture.success([
       "add", fixture.source.path, "pdf", "--scope", scope, "--mode", mode,
     ])
     try fixture.skill("pdf", body: "Updated content")
     try Data("After\n".utf8).write(to: nested)
     try fixture.commit()
+    let newRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     for arguments in [["update"], ["update", "--apply"]] {
       let output = try fixture.success(arguments + ["--scope", scope]).stdout
       #expect(output.components(separatedBy: "--- a/pdf/SKILL.md\n").count == 2)
@@ -45,7 +47,9 @@ struct SkillOutputExecutableTests {
       #expect(output.components(separatedBy: "-Original content\n+Updated content\n").count == 2)
       #expect(!output.contains("link pdf:") && !output.contains("cache/"))
       if arguments.contains("--apply") {
-        #expect(output.hasSuffix("Updated pdf for claude-code, codex.\n"))
+        #expect(
+          output.hasSuffix(
+            "Updated pdf for claude-code, codex: \(oldRevision) -> \(newRevision).\n"))
       }
     }
   }
@@ -55,12 +59,17 @@ struct SkillOutputExecutableTests {
     try fixture.skill("pdf")
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
+    let revision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     for mode in ["copy", "edit", "link"] {
       try changeSelection(fixture) { $0["mode"] = mode }
       let output = try fixture.success(["update", "--apply"]).stdout
+      let old = mode == "copy" ? "link" : mode == "edit" ? "copy" : "edit"
+      #expect(output.contains("  ~ changed  codex (\(old) -> \(mode))  .agents/skills/pdf\n"))
       #expect(output.components(separatedBy: "link pdf:").count == 2)
       #expect(!output.contains("--- a/pdf/SKILL.md"))
-      #expect(output.hasSuffix("Updated pdf for claude-code, codex.\n"))
+      let before = old == "edit" ? "none" : String(revision)
+      let after = mode == "edit" ? "none" : String(revision)
+      #expect(output.hasSuffix("Updated pdf for claude-code, codex: \(before) -> \(after).\n"))
       if mode != "copy" { #expect(output.contains(fixture.source.path + "/skills/pdf")) }
     }
   }
@@ -69,18 +78,21 @@ struct SkillOutputExecutableTests {
     let fixture = try CLIFixture()
     try fixture.skill("pdf")
     try fixture.commit()
+    let oldRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     try fixture.success(["add", fixture.source.path, "pdf", "--mode", "copy"])
     try Data("Local Codex content\n".utf8).write(
       to: fixture.project.appendingPathComponent(".agents/skills/pdf/SKILL.md"))
     try fixture.skill("pdf", body: "Updated content")
     try fixture.commit()
+    let newRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     let output = try fixture.success(["update", "--apply"]).stdout
     #expect(output.contains("pdf/SKILL.md (claude-code)\n--- a/pdf/SKILL.md"))
     #expect(output.contains("pdf/SKILL.md (codex)\n--- a/pdf/SKILL.md"))
     #expect(output.contains("-Local Codex content\n"))
     #expect(output.contains("-Original content\n"))
     #expect(output.components(separatedBy: "+Updated content\n").count == 3)
-    #expect(output.hasSuffix("Updated pdf for claude-code, codex.\n"))
+    #expect(
+      output.hasSuffix("Updated pdf for claude-code, codex: \(oldRevision) -> \(newRevision).\n"))
   }
 
   @Test func updateRemovalsNameRecipients() throws {
@@ -88,11 +100,14 @@ struct SkillOutputExecutableTests {
     try fixture.skill("pdf")
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
+    let revision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     try changeSelection(fixture) { $0["agents"] = ["codex"] }
     let partial = try fixture.success(["update", "--apply"]).stdout
     #expect(partial.contains("--- a/pdf/SKILL.md\n+++ /dev/null\n"))
     #expect(!partial.contains("link pdf:"))
-    #expect(partial.hasSuffix("Removed pdf for claude-code.\nUpdated pdf for codex.\n"))
+    #expect(
+      partial.hasSuffix(
+        "Removed pdf for claude-code.\nUpdated pdf for codex: \(revision) -> \(revision).\n"))
     var declaration = try fixture.declaration()
     declaration["skills"] = [String: Any]()
     try JSONSerialization.data(withJSONObject: declaration).write(to: fixture.state("agents.json"))
@@ -120,6 +135,7 @@ struct SkillOutputExecutableTests {
     try fixture.skill("healthy")
     try fixture.skill("broken")
     try fixture.commit()
+    let oldRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     try fixture.success([
       "add", fixture.source.path, "healthy", "broken", "--mode", "copy",
     ])
@@ -129,9 +145,12 @@ struct SkillOutputExecutableTests {
     #expect(list.status == 1)
     try fixture.skill("healthy", body: "Updated content")
     try fixture.commit()
+    let newRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     let updated = try fixture.success(["update", "healthy", "--apply"]).stdout
     #expect(updated.components(separatedBy: "--- a/healthy/SKILL.md\n").count == 2)
-    #expect(updated.hasSuffix("Updated healthy for claude-code, codex.\n"))
+    #expect(
+      updated.hasSuffix(
+        "Updated healthy for claude-code, codex: \(oldRevision) -> \(newRevision).\n"))
     let removed = try fixture.success(["remove", "healthy"]).stdout
     #expect(removed == "Removed healthy for claude-code, codex.\n")
   }
@@ -142,6 +161,7 @@ struct SkillOutputExecutableTests {
     try fixture.skill("pdf")
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
+    let oldRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
     if command == "update" {
       try fixture.skill("pdf", body: "Updated content")
       try fixture.commit()
@@ -155,8 +175,14 @@ struct SkillOutputExecutableTests {
     let applied = try fixture.run(arguments)
     #expect(applied.status == 0)
     #expect(applied.stderr == "Recovered interrupted transaction at .agent; retrying once.\n")
-    let verb = command == "update" ? "Updated" : "Removed"
-    #expect(applied.stdout.hasSuffix("\(verb) pdf for claude-code, codex.\n"))
+    if command == "update" {
+      let newRevision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
+      #expect(
+        applied.stdout.hasSuffix(
+          "Updated pdf for claude-code, codex: \(oldRevision) -> \(newRevision).\n"))
+    } else {
+      #expect(applied.stdout.hasSuffix("Removed pdf for claude-code, codex.\n"))
+    }
     #expect(!FileManager.default.fileExists(atPath: journal.path))
   }
 

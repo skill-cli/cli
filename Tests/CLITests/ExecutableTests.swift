@@ -60,25 +60,28 @@ struct ExecutableTests {
     #expect(
       Set(update.keys) == [
         "name", "source", "changed", "oldRevision", "newRevision", "oldHash", "newHash", "files",
+        "lockMissing", "membership",
       ])
     #expect(update["oldRevision"] as? String != update["newRevision"] as? String)
     let files = try #require(update["files"] as? [[String: Any]])
     let change = try #require(
       files.first { ($0["path"] as? String)?.hasSuffix("SKILL.md") == true })
     #expect(Set(change.keys) == ["path", "before", "after"])
-    let before = try #require(change["before"] as? [String: String])
-    let after = try #require(change["after"] as? [String: String])
-    #expect(Set(before.keys) == ["kind", "base64"] && before["kind"] == "file")
-    #expect(Data(base64Encoded: try #require(before["base64"])) == original)
+    let before = try #require(change["before"] as? [String: Any])
+    let after = try #require(change["after"] as? [String: Any])
+    #expect(
+      Set(before.keys) == ["kind", "base64", "executable"] && before["kind"] as? String == "file")
+    #expect(Data(base64Encoded: try #require(before["base64"] as? String)) == original)
     #expect(try Data(contentsOf: file) == original)
     #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
     #expect(try Data(contentsOf: fixture.state("agents.json", scope: scope)) == declaration)
     let applied = try fixture.success(["update", "--apply"] + scopeArguments)
     let diffIndex = try #require(applied.stdout.range(of: "+Updated upstream content")?.lowerBound)
     let appliedIndex = try #require(
-      applied.stdout.range(of: "Updated demo for codex.\n")?.lowerBound)
+      applied.stdout.range(of: "Updated demo for codex:")?.lowerBound)
     #expect(diffIndex < appliedIndex)
-    #expect(try Data(contentsOf: file) == Data(base64Encoded: try #require(after["base64"])))
+    #expect(
+      try Data(contentsOf: file) == Data(base64Encoded: try #require(after["base64"] as? String)))
     let clean = try fixture.success(["update", "--json"] + scopeArguments).json()
     #expect(clean["changed"] as? Bool == false)
     try fixture.success(["remove", "demo"] + scopeArguments)
@@ -275,10 +278,11 @@ struct ExecutableTests {
         let path = try #require(file["path"] as? String)
         return (URL(fileURLWithPath: path).lastPathComponent, file)
       })
-    #expect(
-      (byName["binary"]?["before"] as? [String: String]) == ["kind": "file", "base64": "AP8="])
-    #expect(
-      (byName["binary"]?["after"] as? [String: String]) == ["kind": "file", "base64": "AP4="])
+    let before = try #require(byName["binary"]?["before"] as? [String: Any])
+    let after = try #require(byName["binary"]?["after"] as? [String: Any])
+    #expect(before["kind"] as? String == "file" && before["base64"] as? String == "AP8=")
+    #expect(after["kind"] as? String == "file" && after["base64"] as? String == "AP4=")
+    #expect(before["executable"] as? Bool == false && after["executable"] as? Bool == false)
     #expect(
       (byName["link"]?["after"] as? [String: String]) == [
         "kind": "symlink", "destination": "binary",

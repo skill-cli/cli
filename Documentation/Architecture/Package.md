@@ -14,9 +14,8 @@ skill (executable product)
   CLITests ──> CLI
 ```
 
-`Package.swift` owns the graph. Core follows `master` during development;
-[release preparation](../Reference/Release.md) selects a published version
-range. This repository has no library target. It does not depend on
+`Package.swift` owns the graph and the core revision used during development;
+[release preparation](../Reference/Release.md) selects a published version range. This repository has no library target. It does not depend on
 `AgentsInstructions` or on the `agents` CLI package.
 
 The CLI owns argument validation, help, version output, JSON report schemas,
@@ -55,6 +54,7 @@ named update command for both selected and all-skill updates.
 | `Tests/CLITests/HumanOutputTests.swift` | Unified diffs, paths, ordering, controls, and multiline diagnostics |
 | `Tests/CLITests/HumanExecutableTests.swift` | Readable output, repins, completions, and Git diagnostics |
 | `Tests/CLITests/SkillRenderingTests.swift` | Physical cache-link paths through symlinked homes |
+| `Tests/CLITests/UpdateReportingTests.swift` | Versions, executable flags, membership, and missing-lock output |
 | `Tests/CLITests/SkillOutputExecutableTests.swift` | Shared and divergent diffs, modes, recipients, and recovery |
 | `Tests/CLITests/ConventionTests.swift` | Recovery, fixture cleanup, file snapshot encoding, terminal sanitization |
 | `Tests/CLITests/ExecutableTests.swift` | Lifecycle, help, output schemas, exits, environment isolation |
@@ -68,7 +68,9 @@ named update command for both selected and all-skill updates.
 Commands parse options, call `SkillOperations`, then render its returned models.
 Updates provide a callback that renders unified file diffs before core commits
 replacements. Human output groups identical skill changes across recipients and
-omits cache-link moves. JSON retains exact snapshots and absolute paths.
+omits cache-link moves. Core's membership rows supply recipients and physical
+installation roots for update previews and completion; no separate inventory
+read is needed. JSON retains exact snapshots and absolute paths.
 `install` uses exact locked pins and recipients.
 
 Project state is `.agent/agents.json`, `.agent/agents.resolved`, and

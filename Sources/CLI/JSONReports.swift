@@ -84,8 +84,12 @@ struct UpdateItem: Encodable {
   let changed: Bool
   let oldRevision: String?
   let newRevision: String?
+  let oldVersion: String?
+  let newVersion: String?
   let oldHash: String?
   let newHash: String?
+  let lockMissing: Bool
+  let membership: [MembershipChange]
   let files: [FileChange]
 
   init(_ result: UpdateResult) {
@@ -94,9 +98,42 @@ struct UpdateItem: Encodable {
     changed = result.changed
     oldRevision = result.oldRevision
     newRevision = result.newRevision
+    oldVersion = result.oldVersion
+    newVersion = result.newVersion
     oldHash = result.oldHash
     newHash = result.newHash
+    lockMissing = result.lockMissing
+    membership = result.membership.map(MembershipChange.init)
     files = result.changes.map(FileChange.init)
+  }
+}
+
+struct MembershipChange: Encodable {
+  let agent: String
+  let path: String
+  let before: MembershipState
+  let after: MembershipState
+
+  init(_ change: SkillMembershipChange) {
+    agent = change.agent.rawValue
+    path = change.path
+    before = MembershipState(change.before)
+    after = MembershipState(change.after)
+  }
+}
+
+struct MembershipState: Encodable {
+  let kind: String
+  var mode: String?
+
+  init(_ membership: SkillMembership) {
+    switch membership {
+    case .absent:
+      kind = "absent"
+    case .installed(let mode):
+      kind = "installed"
+      self.mode = mode.rawValue
+    }
   }
 }
 
@@ -126,9 +163,10 @@ struct FileEntry: Encodable {
 
   init(_ entry: SkillFileEntry) {
     switch entry {
-    case .file(let data):
+    case .file(let data, let executable):
       kind = "file"
       base64 = data.base64EncodedString()
+      self.executable = executable
     case .directory:
       kind = "directory"
     case .symbolicLink(let target):

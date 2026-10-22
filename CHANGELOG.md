@@ -7,6 +7,22 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+### Added
+
+- Update previews and completion lines show resolved versions alongside revisions.
+- Update previews show executable-mode changes and each agent's added, removed,
+  unchanged, or changed-mode membership, including live edit installations with
+  no file differences. Missing locks are identified as unrecorded membership.
+- Version 1 update JSON adds resolved versions, executable flags, missing-lock
+  status, and per-agent before/after membership.
+
+### Fixed
+
+- Executable-only updates are displayed and applied even when content hashes or
+  revisions are unchanged.
+- Update file grouping and recipient completions use the prepared membership
+  report, including new recipients and recipients sharing a physical path.
+
 ## [0.3.1] - 2026-10-20
 
 Built on agents-tools/core 0.1.1.

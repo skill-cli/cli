@@ -79,7 +79,7 @@ links, executable-mode changes, removals, and multiline Git diagnostics.
 - Update the CLI reference, schemas, companion skill, and architecture when
   their contracts change. Keep historical records in their owning directories.
 
-Core follows `master` during development. To test an authorized core worktree
+Core is pinned by revision during development. To test an authorized core worktree
 without changing the manifest:
 
 ```sh

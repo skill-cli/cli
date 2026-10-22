@@ -61,18 +61,19 @@ struct HumanItem {
   init(
     name: String, source: String,
     existed: Bool, exists: Bool, oldRevision: String?, newRevision: String?,
+    oldVersion: String? = nil, newVersion: String? = nil,
     sameContent: Bool, otherChanges: Bool = false
   ) {
     self.name = name
     self.source = source
-    before = Self.pin(revision: oldRevision)
-    after = Self.pin(revision: newRevision)
+    before = Self.pin(revision: oldRevision, version: oldVersion)
+    after = Self.pin(revision: newRevision, version: newVersion)
     if !existed {
       change = .new
     } else if !exists {
       change = .removed
     } else if sameContent && !otherChanges
-      && oldRevision != newRevision
+      && (oldRevision != newRevision || oldVersion != newVersion)
     {
       change = .repinned
     } else {
@@ -80,8 +81,10 @@ struct HumanItem {
     }
   }
 
-  static func pin(revision: String?) -> String {
-    revision.map { String($0.prefix(7)) } ?? "none"
+  static func pin(revision: String?, version: String? = nil) -> String {
+    let revision = revision.map { String($0.prefix(7)) }
+    if let version { return version + (revision.map { " (\($0))" } ?? "") }
+    return revision ?? "none"
   }
 
   static func ordered(_ items: [HumanItem]) -> [HumanItem] {
@@ -92,7 +95,10 @@ struct HumanItem {
   }
 
   func render(paths: HumanPaths) -> String {
-    "\(change.label)  \(Terminal.line(name))  \(paths.source(source))  \(Terminal.line(before)) -> \(Terminal.line(after))\n"
+    let pins =
+      before == "none" && after == "none"
+      ? "" : "  \(Terminal.line(before)) -> \(Terminal.line(after))"
+    return "\(change.label)  \(Terminal.line(name))  \(paths.source(source))\(pins)\n"
   }
 }
 
@@ -104,7 +110,7 @@ enum HumanFileEntry: Equatable {
 
   init(_ entry: SkillFileEntry) {
     switch entry {
-    case .file(let data): self = .file(data)
+    case .file(let data, let executable): self = .file(data, executable: executable)
     case .directory: self = .directory
     case .symbolicLink(let target): self = .symbolicLink(target)
     }

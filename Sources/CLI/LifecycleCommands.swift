@@ -35,20 +35,17 @@ struct UpdateOptions: ParsableArguments {
   }
 
   func run(names: [String] = []) throws {
-    let (results, previous) = try withRecovery {
-      let previous =
-        json ? SkillOutputInventory() : SkillOutputInventory.read(scope: location.scope)
-      let results = try SkillOperations.updateInstalled(
+    let results = try withRecovery {
+      try SkillOperations.updateInstalled(
         scope: location.scope, skillNames: names, apply: apply,
-        beforeApply: { Terminal.differences($0, previous: previous, paths: location.paths) })
-      return (results, previous)
+        beforeApply: { Terminal.differences($0, paths: location.paths) })
     }
     if json {
       try Terminal.json(UpdateReport(scope: location.scope.rawValue, results: results))
     } else if apply {
-      Terminal.updatedSkills(results, previous: previous)
+      Terminal.updatedSkills(results)
     } else {
-      Terminal.differences(results, previous: previous, paths: location.paths)
+      Terminal.differences(results, paths: location.paths)
       if results.contains(where: \.changed) {
         Terminal.write("Preview only. Run again with --apply to write these changes.\n")
       }
