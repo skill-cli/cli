@@ -60,6 +60,42 @@
                 "path"
               ]
             }
+          },
+          "oldVersion": {
+            "type": "string"
+          },
+          "newVersion": {
+            "type": "string"
+          },
+          "lockMissing": {
+            "type": "boolean",
+            "description": "Before membership is unrecorded because agents.resolved is missing."
+          },
+          "membership": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "before": {
+                  "$ref": "#/$defs/membership"
+                },
+                "after": {
+                  "$ref": "#/$defs/membership"
+                }
+              },
+              "required": [
+                "agent",
+                "path",
+                "before",
+                "after"
+              ]
+            }
           }
         },
         "required": [
@@ -89,6 +125,10 @@
             "base64": {
               "type": "string",
               "contentEncoding": "base64"
+            },
+            "executable": {
+              "type": "boolean",
+              "description": "Whether any execute bit is set; not a full permission mask."
             }
           },
           "required": [
@@ -120,6 +160,40 @@
           "required": [
             "kind",
             "destination"
+          ]
+        }
+      ]
+    },
+    "membership": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "absent"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "installed"
+            },
+            "mode": {
+              "enum": [
+                "link",
+                "copy",
+                "edit"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "mode"
           ]
         }
       ]

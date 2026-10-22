@@ -146,6 +146,8 @@ struct HumanOutputTests {
     #expect(items[4].render(paths: HumanPaths()) == "= repinned  a  source  abcdef0 -> 1234567\n")
     #expect(HumanItem.pin(revision: "abc123456") == "abc1234")
     #expect(HumanItem.pin(revision: nil) == "none")
+    #expect(HumanItem.pin(revision: "abc123456", version: "1.2.0") == "1.2.0 (abc1234)")
+    #expect(HumanItem.pin(revision: nil, version: "1.2.0") == "1.2.0")
   }
 
   @Test func multilineErrorsIndentEveryContinuation() {

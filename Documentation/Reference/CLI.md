@@ -222,15 +222,18 @@ Unnamed `update` reconciles every declared skill,
 including membership changes in `all` selections.
 
 Human update item lines use `+ new`, `~ changed`, `= repinned`, and `- removed`.
-Repinned means only the pin moved and content is identical. Items sort in that
-order, then by name. Revisions use seven characters; item summaries omit hashes.
-Live edit records show `none` for pins; a pinless result with no file differences
-is reported as changed.
+Repinned means only the pin moved: content, executable flags, and managed
+membership are identical. Items sort in that order, then by name. Revisions use
+seven characters; a resolved version displays as `1.2.0 (abc1234)`. Without a
+version, the revision is shown alone; absent pins and live edit records show
+`none`. Item summaries omit hashes. Managed membership determines whether a
+pinless skill is new or removed, even when there is no physical file difference.
 
 For example, `skill update` can report a pin change without a content diff:
 
 ```text
 = repinned  pdf  local:~/Developer/team-rules  6c09c94 -> 9661957
+  = unchanged  codex (link)  .agents/skills/pdf
 Preview only. Run again with --apply to write these changes.
 ```
 
@@ -243,9 +246,10 @@ File comparisons use unified line diffs with three lines of context and
 `--- /dev/null`; removed files use `+++ /dev/null`. Missing trailing newlines
 are marked with `\ No newline at end of file`. Empty file creation or removal
 prints only `empty file <path> added` or `empty file <path> removed`. Binary, mode,
-link, and directory changes use the same rendering as watch diffs. Watch diffs
-include executable-mode changes; skill update diffs compare content bytes,
-links, and directories.
+link, and directory changes use the same rendering as watch diffs. Skill updates
+include executable-only changes even when the revision and content hash are
+unchanged. Mode labels `644` and `755` represent the absence or presence of any
+execute bit, not a complete POSIX permission mask. Content hashes exclude modes.
 
 Skill content differences appear once per skill, using paths relative to its
 root prefixed by its name. Identical changes across installations are combined.
@@ -256,6 +260,7 @@ visible, as do symbolic links within the skill content.
 
 ```text
 ~ changed  pdf  local:~/Developer/team-rules  6c09c94 -> 9661957
+  = unchanged  codex (link)  .agents/skills/pdf
 --- a/pdf/SKILL.md
 +++ b/pdf/SKILL.md
 @@ -6,7 +6,7 @@
@@ -270,10 +275,40 @@ visible, as do symbolic links within the skill content.
 Preview only. Run again with --apply to write these changes.
 ```
 
-`--apply` prints the preview before core writes, followed by
-`Updated <skill> for <recipients>.` Removed skill recipients get
-`Removed <skill> for <recipients>.` Update and removal completions print only for
-changed results, as soon as the skill operation succeeds. Named and all-skill
+Each changed skill includes one membership row per previous or prospective
+agent. Rows show `+ added`, `- removed`, or `= unchanged` with the managed
+installation mode and physical target path. A mode change shows `~ changed`
+and the old and new modes. These labels describe membership, not content: an
+unchanged recipient can still receive updated files. Shared paths retain a row
+for each agent while file diffs appear once.
+
+```text
+~ changed  pdf  local:~/Developer/team-rules  none -> none
+  = unchanged  claude-code (edit)  .claude/skills/pdf
+  - removed  codex (edit)  .agents/skills/pdf
+  + added  cursor (edit)  .agents/skills/pdf
+Preview only. Run again with --apply to write these changes.
+```
+
+When `agents.resolved` is missing, the preview begins with
+`Lock missing: prior skill membership is unrecorded.` Membership additions do
+not imply that target files were absent. Applying still rejects existing
+content that the scope does not manage, including an already-correct live link.
+A recorded but missing target retains its before membership.
+
+`--apply` prints the preview before core writes. After success, completion lines
+use `Removed`, `Added`, and `Updated` for removed, new, and retained recipients
+of changed skills, respectively. When a resolved version is available, they
+include the old and new pins:
+
+```text
+~ changed  pdf  local:~/Developer/team-rules  1.2.0 (abc1234) -> 1.3.0 (def5678)
+  = unchanged  codex (copy)  .agents/skills/pdf
+mode pdf/run.sh: 644 -> 755
+Updated pdf for codex: 1.2.0 (abc1234) -> 1.3.0 (def5678).
+```
+
+Completions appear only after the skill operation succeeds. Named and all-skill
 updates print `No skill changes.` when unchanged, including with `--apply`.
 A preview can become stale; `--apply` resolves again and
 displays the content it will actually write. `--json --apply` is a usage error.
@@ -427,6 +462,23 @@ and optional path. `pending-recovery` is an error; other severities come from co
 `install --json` reports restored skill rows with `name`, `agent`, `mode`, and
 absolute `path`. These definitions are CLI-owned and do not expose core's
 encoded lock objects.
+
+Update skill rows include optional `oldVersion` and `newVersion` from the resolved
+version tags. Absent sides, live edit installations, well-known artifacts, and
+Git resolutions without a selected version tag omit those properties. Full
+`oldRevision`/`newRevision` and `oldHash`/`newHash` retain their existing meaning.
+Regular file snapshots add boolean `executable` alongside `kind` and `base64`.
+
+Each skill row also includes `lockMissing` and `membership`. Membership rows have
+`agent`, absolute physical `path`, `before`, and `after`. Each side is either
+`{ "kind": "absent" }` or `{ "kind": "installed", "mode": "link|copy|edit" }`.
+Rows cover the union of recorded and prospective recipients, sorted by canonical
+agent ID, including unchanged results. Agents sharing a path keep separate
+membership rows while physical file changes remain deduplicated. Membership is
+managed state, independent of physical presence: a missing target can still have
+installed before membership. `lockMissing: true` means before membership is
+unrecorded; it does not establish ownership of an existing target. These fields
+are additive within schema version 1; older reports can omit them.
 
 Watch `sources` entries (and the single diff `source` object) include `alias`,
 normalized `source`, `seen`, `current`, optional Git `commitCount`, and `changes`.

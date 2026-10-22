@@ -140,9 +140,12 @@ Add, seen, and remove mutate immediately and do not accept `--json`.
 
 JSON reports have `schemaVersion: 1` and sorted keys. Missing optional values
 are omitted. List reports use `kind: installed|source`; update reports contain
-`changed` and per-file before/after snapshots; install reports restored skills;
+`changed`, resolved versions when available, per-agent membership, missing-lock
+status, and per-file before/after snapshots; install reports restored skills;
 doctor contains `ok`, `roots`, and checks with `kind: skills`.
-File snapshots use base64 for bytes and typed directory/symlink entries.
+File snapshots use base64 for bytes, executable flags, and typed directory/symlink
+entries. Membership describes managed state independently of target presence;
+a missing lock does not grant ownership of an existing target.
 Watch status has `sources`; diff has one `source` and includes file snapshots
 with executable bits. Baselines contain full Git `revision` IDs or artifact
 digests; changes identify `skill`, `instructions`, or `artifact`.

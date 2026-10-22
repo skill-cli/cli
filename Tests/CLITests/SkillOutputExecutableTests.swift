@@ -58,6 +58,8 @@ struct SkillOutputExecutableTests {
     for mode in ["copy", "edit", "link"] {
       try changeSelection(fixture) { $0["mode"] = mode }
       let output = try fixture.success(["update", "--apply"]).stdout
+      let old = mode == "copy" ? "link" : mode == "edit" ? "copy" : "edit"
+      #expect(output.contains("  ~ changed  codex (\(old) -> \(mode))  .agents/skills/pdf\n"))
       #expect(output.components(separatedBy: "link pdf:").count == 2)
       #expect(!output.contains("--- a/pdf/SKILL.md"))
       #expect(output.hasSuffix("Updated pdf for claude-code, codex.\n"))

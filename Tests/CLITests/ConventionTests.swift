@@ -63,15 +63,15 @@ struct ConventionTests {
 
   @Test func typedFileSnapshotsHaveStableEncoding() throws {
     let entries: [SkillFileEntry] = [
-      .file(Data([0, 255])), .directory, .symbolicLink("../target"),
+      .file(Data([0, 255]), executable: false), .directory, .symbolicLink("../target"),
     ]
     let encoded = try JSONEncoder().encode(entries.map(FileEntry.init))
-    let values = try #require(JSONSerialization.jsonObject(with: encoded) as? [[String: String]])
-    #expect(
-      values == [
-        ["kind": "file", "base64": "AP8="], ["kind": "directory"],
-        ["kind": "symlink", "destination": "../target"],
-      ])
+    let values = try #require(JSONSerialization.jsonObject(with: encoded) as? [[String: Any]])
+    #expect(values[0]["kind"] as? String == "file")
+    #expect(values[0]["base64"] as? String == "AP8=")
+    #expect(values[0]["executable"] as? Bool == false)
+    #expect(values[1] as? [String: String] == ["kind": "directory"])
+    #expect(values[2] as? [String: String] == ["kind": "symlink", "destination": "../target"])
   }
 
   @Test func diagnosticsAreSingleLineAndEscapeTerminalControls() {

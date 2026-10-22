@@ -36,18 +36,25 @@ struct SkillRenderingTests {
         ],
         [
           "path": target.appendingPathComponent("SKILL.md").path,
-          "before": try entry(.file(Data("Old\n".utf8))),
-          "after": try entry(.file(Data("New\n".utf8))),
+          "before": try entry(.file(Data("Old\n".utf8), executable: false)),
+          "after": try entry(.file(Data("New\n".utf8), executable: false)),
         ],
       ],
-      "installed": [],
+      "installed": [], "lockMissing": false,
+      "membership": [
+        [
+          "agent": "codex", "path": target.path,
+          "before": ["installed": ["mode": "link"]],
+          "after": ["installed": ["mode": "link"]],
+        ]
+      ],
     ])
     let result = try JSONDecoder().decode(UpdateResult.self, from: data)
     let environment = RuntimeEnvironment(
       projectDirectory: fixture.project, homeDirectory: alias, environment: fixture.environment)
     var output = ""
     Terminal.skillFileDifferences(
-      result, previous: SkillOutputInventory(),
+      result,
       paths: HumanPaths(scope: .user, environment: environment)
     ) { output += $0 }
     #expect(output == "--- a/pdf/SKILL.md\n+++ b/pdf/SKILL.md\n@@ -1 +1 @@\n-Old\n+New\n")

@@ -17,7 +17,7 @@ which defers to the governing delivery workflow. Include the version change and
 changelog entry in the requirement's final delivery candidate.
 
 1. In a task worktree based on current `origin/master`, select a published core
-   version. Replace the development `branch: "master"` dependency with a
+   version. Replace the development revision pin with a
    minor-bounded range while core is `0.x`, for example:
 
    ```swift
