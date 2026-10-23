@@ -16,7 +16,7 @@
 <p align="center">
   <a href="https://github.com/skill-cli/cli/actions/workflows/ci.yml"><img src="https://github.com/skill-cli/cli/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-6.3%2B-F05138" alt="Swift 6.3+"></a>
-  <a href="Package.swift"><img src="https://img.shields.io/badge/platforms-macOS%2013%2B-lightgrey" alt="Platforms: macOS 13+"></a>
+  <a href="Package.swift"><img src="https://img.shields.io/badge/platforms-macOS%2026%2B-lightgrey" alt="Platforms: macOS 26+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
 </p>
 
@@ -58,6 +58,10 @@ upstream update:
 </p>
 
 ## Install
+
+Source and HEAD builds require macOS 26 or later. Stable Homebrew releases retain
+their published requirements; the formula's macOS minimum changes with the
+release that raises it.
 
 Install the latest stable release from the Homebrew tap:
 
@@ -136,7 +140,7 @@ skill add . --path skills/skill-cli --scope user --agent codex --mode edit
 
 ## Requirements
 
-- macOS 13 or later
+- macOS 26 or later
 - Swift 6.3 or later to build from source
 - Git for source repositories
 

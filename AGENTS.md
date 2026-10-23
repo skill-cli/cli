@@ -48,6 +48,8 @@ Follow the family [change flow](https://github.com/agents-tools/.github/blob/mas
 
 ## Operating Notes
 
+- Require macOS 26 or later and Swift 6.3 or later. Shared CI compiles and tests
+  only with Xcode 26.6 on macOS 26, configured in `.github/swift-package.json`.
 - Keep package-domain prefixes out of internal target names unless the package
   boundary stops making that context clear.
 - Keep CLI parsing and terminal behavior in `Sources/CLI`.
