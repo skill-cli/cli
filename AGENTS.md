@@ -59,6 +59,10 @@ Follow the family [change flow](https://github.com/agents-tools/.github/blob/mas
 - Keep CLI tests in `Tests/CLITests` with explicit subprocess environments.
 - Run the development-loop checks in `CONTRIBUTING.md` before handing off
   behavior or workflow changes, including `swift test` with agent configuration
-  overrides unset. Keep policy, shared package validation, release executable
-  smoke checks, and terminal/social-preview validation passing. Use the pinned
-  organization standard for both presentation assets.
+  overrides unset. Keep the required `policy / policy` and `validate / result`
+  checks passing. The demo job re-records `recording.json` and uploads it on
+  drift. Render and check terminal SVGs and the social preview locally with the
+  `github-readme-design` toolchain against skill-cli/.github's DESIGN, fonts,
+  and catalog; follow `Documentation/Reference/ReadmeDemo.md`.
+- Keep repository-specific automation in lowercase `scripts/`.
+  `scripts/check-parity.py` is a manual check.

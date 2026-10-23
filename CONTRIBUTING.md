@@ -13,17 +13,15 @@ Requires macOS 13 or later and Swift 6.3 or later.
 swift build
 env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
 swift build -c release
-xcrun swift-format lint --strict --configuration .swift-format --recursive Package.swift Sources Tests
-git diff --check origin/master
-.build/release/skill --version
-.build/release/skill --help
+swift format lint --strict --configuration .swift-format --recursive Package.swift Sources Tests
 ```
 
 Strict formatting must produce zero findings. Executable tests create local
 Git sources and isolated homes; subprocesses use an explicit environment and
-fixtures clean up on exit. For workflow changes, run `actionlint` and
-`git diff --check origin/master`. When changing the README demo, also run the
-[presentation check](Documentation/Reference/ReadmeDemo.md#local-regeneration).
+fixtures clean up on exit. Help, version, and usage-error assertions live in
+`Tests/CLITests/ExecutableTests.swift`. For workflow changes, run `actionlint`.
+When changing presentation assets, follow the
+[local rendering checks](Documentation/Reference/ReadmeDemo.md#local-rendering).
 
 ## CI
 
@@ -31,19 +29,25 @@ The family [maintenance declaration](https://github.com/agents-tools/.github/blo
 owns the required contexts and their activation. The callers in
 `.github/workflows/` pin the shared workflows to a reviewed full commit SHA.
 
+Required checks are exactly `policy / policy` and `validate / result`.
+
 | Context | Validation |
 | --- | --- |
-| `policy / policy` | Conventional Commit subjects, PR titles, and added-line policy |
-| `validate / swift-package` | Strict formatting, debug build, isolated tests, release build, and diff check on macOS 26 |
-| `smoke` | Release build, help output, version from `BuildInfo.version`, and unknown-command exit 64 in an isolated environment |
-| `presentation / presentation` | Built executable re-records `.github/assets/terminal/script.yml`; recording, both SVGs and the catalog-driven social preview match byte for byte |
+| `policy / policy` | Commit identity and signatures, Conventional Commit subjects, PR titles, and added-line policy |
+| `validate / result` | Aggregate of strict formatting, tests, release build, and terminal demo recording checks using `.github/swift-package.json` |
 
-The committed [social preview](.github/assets/social-preview/social-preview.png)
-uses the DESIGN, fonts, catalog and light-page icon selected by the presentation
-workflow pin. Follow [presentation reproduction](Documentation/Reference/ReadmeDemo.md)
-for local regeneration and checks. The agents-tools family policy and Swift CI
-pins stay at skill-cli's adopted family revision; presentation uses skill-cli's
-organization standard.
+The shared workflows live in
+[agents-tools/github-workflows](https://github.com/agents-tools/github-workflows).
+The compiler uses Xcode 26.6 on macOS 26. Formatting covers `Package.swift`,
+`Sources`, and `Tests` with `.swift-format`.
+The demo job builds `skill`, re-records `.github/assets/terminal/script.yml`,
+and uploads the regenerated `recording.json` on drift for review and commit.
+
+Render and check the terminal SVGs and social preview locally with the
+`github-readme-design` toolchain against
+[skill-cli/.github's DESIGN](https://github.com/skill-cli/.github/blob/master/DESIGN.md),
+fonts, and catalog. Follow [presentation reproduction](Documentation/Reference/ReadmeDemo.md)
+for the toolchain reference and asset locations.
 
 Policy and CI run on branch pushes and on opened, synchronized, or reopened
 pull requests. Title edits rerun only policy. Both callers support manual
@@ -53,10 +57,11 @@ Weekly Dependabot PRs cover Swift packages and GitHub Actions.
 
 ### Shared command parity
 
-To compare the shared command contract with a read-only `agents` checkout:
+This is a manual check. To compare the shared command contract with a read-only
+`agents` checkout:
 
 ```sh
-python3 Scripts/check-parity.py --agents-package /path/to/agents-tools/cli
+python3 scripts/check-parity.py --agents-package /path/to/agents-tools/cli
 ```
 
 Build `skill` first. The runner archives the reference checkout's HEAD and builds

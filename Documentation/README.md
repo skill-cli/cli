@@ -38,4 +38,4 @@ default.
 - [README terminal assets](../.github/assets/terminal/): the scripted session,
   generated recording, and light/dark SVGs
 - [Social preview](../.github/assets/social-preview/social-preview.png): the
-  catalog-driven repository card checked by presentation CI.
+  catalog-driven repository card rendered and checked locally.

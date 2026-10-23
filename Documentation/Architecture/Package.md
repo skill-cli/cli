@@ -92,12 +92,13 @@ for those invariants and [CLI reference](../Reference/CLI.md) for the command co
 CLI tests exercise the executable with explicit environments and local Git
 fixtures, cleaning up their own roots. Core's tests own resolver, discovery,
 artifact, storage, concurrency, and installation algorithm coverage.
-`Scripts/check-parity.py` compares lifecycle and watch behavior with a supplied
-read-only `agents` checkout, including exact declaration, lock, and baseline
+`scripts/check-parity.py` manually compares lifecycle and watch behavior with a
+supplied read-only `agents` checkout, including exact declaration, lock, and baseline
 bytes, JSON reports, and normalized human stdout and stderr. It builds an archive
 of the reference HEAD in this worktree and cleans its isolated fixtures.
-CI requires strict formatting, an optimized build, tests, release executable
-smoke checks, and a diff check.
+CI requires `policy / policy` and `validate / result`. Package validation covers
+strict formatting, tests, a release build, and terminal demo recording checks.
+Executable tests own help, version, and usage-error assertions.
 
 `Documentation/Reference/Schemas/` owns JSON schemas. `skills/skill-cli/` is the
 bundled companion skill, separate from SwiftPM targets. Formulae and packaging
