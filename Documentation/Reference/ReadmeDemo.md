@@ -6,47 +6,30 @@ README session's fixture, commands, or expectations. The generated
 [light](../../.github/assets/terminal/terminal-light.svg) and
 [dark](../../.github/assets/terminal/terminal-dark.svg) SVGs live beside it.
 
-[CI](../../.github/workflows/ci.yml) builds the release executable in `smoke`,
-then `presentation` re-records the script against that product in an isolated
-environment. The pinned organization standard supplies the toolchain,
-DESIGN.md, fonts and catalog. CI compares the recording, both SVGs and the
-repository social preview byte for byte and fails on any difference. The SVGs
-outline text in Google Sans Code.
+[CI](../../.github/workflows/ci.yml) calls the shared Swift package workflow
+configured by [swift-package.json](../../.github/swift-package.json).
+Its demo job builds the `skill` release executable and re-records the script
+in an isolated environment. Recording drift fails validation and uploads the
+regenerated `recording.json`. Download it, review the changed output, and commit
+the accepted recording. The required aggregate check is `validate / result`;
+source policy is `policy / policy`.
 
-When regeneration succeeds but the files differ, CI uploads artifact
-`presentation` containing `presentation.tar`, with regenerated `terminal/`
-and/or `social-preview/` directories and file modes preserved. Download it,
-extract it with `tar -xf presentation.tar -C .github/assets`, review the
-recording, both terminal appearances and the preview, and commit the files.
+## Local rendering
 
-## Local regeneration
-
-From a task worktree, build `.build/release/skill` with `swift build -c release`,
-then follow the toolchain reference's [Local regeneration](https://github.com/showxu/skills/blob/9e5d7268232b78f5fbef21ccfb9e3a079f2ef7e3/skills/github-readme-design/references/renderers.md#local-regeneration)
-procedure using the package, DESIGN.md, and fonts selected by the standard
-pinned in CI. Keep temporary inputs under ignored `.build/`. Run the terminal
-check and review both SVGs before committing the script, recording, and exports
-together.
+Render and check both terminal SVGs and the social preview locally with the
+`github-readme-design` toolchain against
+[skill-cli/.github's DESIGN](https://github.com/skill-cli/.github/blob/master/DESIGN.md),
+[fonts](https://github.com/skill-cli/.github/tree/master/.github/design/fonts),
+and [catalog](https://github.com/skill-cli/.github/blob/master/profile/catalog.json).
+Follow the toolchain's [renderer reference](https://github.com/showxu/skills/blob/master/skills/github-readme-design/references/renderers.md)
+for setup, rendering, and check commands. Keep temporary inputs under ignored
+`.build/` in a task worktree. The terminal SVGs outline text in Google Sans Code.
+Review both appearances and commit the exports with the accepted recording.
 
 ## Social preview
 
 The committed [PNG](../../.github/assets/social-preview/social-preview.png) uses
-`skill-cli/.github`'s DESIGN, fonts and catalog at the presentation workflow pin
-in [CI](../../.github/workflows/ci.yml). The catalog's light-page icon resolves
-to this checkout's `.github/assets/logo/logo-light.png`.
-
-Use `standard_dir` for the standard inputs at that exact revision and
-`toolchain_dir` for the pinned package prepared by the local regeneration
-procedure above, keeping temporary inputs under ignored `.build/`:
-
-```sh
-node "$toolchain_dir/src/cli.ts" social-preview render \
-  --design "$standard_dir/DESIGN.md" --fonts "$standard_dir/.github/design/fonts" \
-  --catalog "$standard_dir/profile/catalog.json" --repository cli \
-  --icon .github/assets/logo/logo-light.png \
-  --out .github/assets/social-preview/social-preview.png
-node "$toolchain_dir/src/cli.ts" social-preview check \
-  --design "$standard_dir/DESIGN.md" --fonts "$standard_dir/.github/design/fonts" \
-  --catalog "$standard_dir/profile/catalog.json" --repository cli \
-  --icon .github/assets/logo/logo-light.png --assets .github/assets/social-preview
-```
+the same organization DESIGN, fonts, and catalog. The catalog's light-page icon
+resolves to this checkout's `.github/assets/logo/logo-light.png`.
+Use the renderer reference above to render and check the `cli` repository card,
+review the result, and commit it.

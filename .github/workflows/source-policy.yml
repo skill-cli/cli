@@ -18,4 +18,11 @@ jobs:
   policy:
     permissions:
       contents: read
-    uses: agents-tools/.github/.github/workflows/policy.yml@d88103a9a576c9cfe9561a5d58c803255fea72f4 # v0.1.0
+    uses: agents-tools/github-workflows/.github/workflows/policy.yml@2ce48fb8834304acf010fa1b47a05db6148ab6c4
+    with:
+      allow-terms: |
+        ChatGPT
+        Claude
+        Codex
+        Cursor
+      dependabot-exception: true

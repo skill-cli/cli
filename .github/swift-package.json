@@ -1,0 +1,6 @@
+{
+  "compilers": [
+    {"name": "macos-26-xcode-26.6", "runner": "macos-26", "xcode": "26.6"}
+  ],
+  "demo": {"product": "skill"}
+}
