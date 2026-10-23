@@ -18,7 +18,7 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ### Changed
 
-- **Breaking**: Requires macOS 26 or later; source builds require Swift 6.3 or
+- **Breaking**: Requires macOS 15 or later; source builds require Swift 6.3 or
   later. Upgrade macOS before installing and use a compatible Swift toolchain
   when building from source.
 
