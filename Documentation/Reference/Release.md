@@ -7,6 +7,9 @@ the [skill tap](https://github.com/skill-cli/homebrew-tap#readme) owns formula
 maintenance and publication. Tagging, releases, and tap publication require
 maintainer authorization.
 
+The CLI requires macOS 26 or later; building from source requires Swift 6.3 or later.
+Shared CI compiles and tests only with Xcode 26.6 on macOS 26.
+
 Each block is a single command chain that stops at the first failure; tagging
 and publishing each refuse to run unless the earlier blocks set their markers.
 
@@ -131,6 +134,9 @@ After both CLI releases are available, update `skill-cli/homebrew-tap` in its
 own task worktree. Set the stable archive URL to the `skill` release and compute
 SHA-256 from the exact downloaded archive bytes. Keep HEAD as the development
 channel. Do not infer the archive digest from Git objects.
+
+Keep the formula's macOS requirement aligned with the shipped CLI release;
+update it in the release that raises the deployment floor.
 
 Validate the edited formula in a disposable Homebrew environment where the
 formula is not already installed. Set `test_tap` to an unused temporary tap

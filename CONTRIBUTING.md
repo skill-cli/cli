@@ -7,7 +7,7 @@ for commits, review, and delivery.
 
 ## Development Loop
 
-Requires macOS 13 or later and Swift 6.3 or later.
+Requires macOS 26 or later and Swift 6.3 or later.
 
 ```sh
 swift build
@@ -38,8 +38,8 @@ Required checks are exactly `policy / policy` and `validate / result`.
 
 The shared workflows live in
 [agents-tools/github-workflows](https://github.com/agents-tools/github-workflows).
-The compiler uses Xcode 26.6 on macOS 26. Formatting covers `Package.swift`,
-`Sources`, and `Tests` with `.swift-format`.
+The single compiler entry uses Xcode 26.6 on macOS 26. Formatting covers
+`Package.swift`, `Sources`, and `Tests` with `.swift-format`.
 The demo job builds `skill`, re-records `.github/assets/terminal/script.yml`,
 and uploads the regenerated `recording.json` on drift for review and commit.
 

@@ -2,7 +2,7 @@
 
 `skill-cli` builds the `skill` executable, a skills command layer over
 [agents-tools/core](https://github.com/agents-tools/core). It uses Swift 6.3,
-Swift 6 language mode, and a macOS 13 minimum deployment target.
+Swift 6 language mode, and a macOS 26 minimum deployment target.
 
 ## Products and Ownership
 
