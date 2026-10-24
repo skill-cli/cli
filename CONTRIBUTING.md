@@ -7,7 +7,7 @@ for commits, review, and delivery.
 
 ## Development Loop
 
-Requires macOS 26 or later and Swift 6.3 or later.
+Requires macOS 15 or later and Swift 6.3 or later.
 
 ```sh
 swift build
