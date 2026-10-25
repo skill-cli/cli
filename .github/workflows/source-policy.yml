@@ -2,7 +2,7 @@ name: Source policy
 
 on:
   push:
-    branches: ['**']
+    branches: [master]
   pull_request:
     types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
