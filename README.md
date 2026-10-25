@@ -171,9 +171,8 @@ swift run skill --help
 env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
 ```
 
-The package pins a core revision during development. Release preparation
-changes this to a published version range. The build-time version
-is `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`.
+The package depends on agents-tools/core `"0.1.2"..<"0.2.0"`. The build-time
+version is `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`.
 
 ## License
 
