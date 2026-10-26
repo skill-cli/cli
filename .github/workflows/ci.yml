@@ -19,4 +19,4 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: agents-tools/github-workflows/.github/workflows/swift-package.yml@3fb2887e2831d9d5a287af73819e2ba3a39d0045
+    uses: agents-tools/github-workflows/.github/workflows/swift-package.yml@bb0a8c8c39827a364b9d3cbf4069754e7d975586

@@ -101,7 +101,8 @@ skill doctor --root /path/to/project-a /path/to/project-b --json
 
 Project scope uses the current directory and stores `agents.json`,
 `agents.resolved`, `agents.watch`, and `cache/` under `.agent/`. `--scope user`
-uses `~/.agents/`. Keep state and caches out of version control.
+uses `~/.agents/`. Commit the project's `agents.json` declaration and
+`agents.resolved` lock; keep `agents.watch` and caches out of version control.
 
 `add` installs in `link` mode for the recipients already recorded for that skill
 or source, otherwise for the declaration's default agents (initially Codex and
