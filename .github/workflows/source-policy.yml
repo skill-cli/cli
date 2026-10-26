@@ -18,7 +18,7 @@ jobs:
   policy:
     permissions:
       contents: read
-    uses: agents-tools/github-workflows/.github/workflows/policy.yml@3fb2887e2831d9d5a287af73819e2ba3a39d0045
+    uses: agents-tools/github-workflows/.github/workflows/policy.yml@ebd6af9164232217e2e243da0d9735544ae3a8f9
     with:
       allow-terms: |
         ChatGPT
