@@ -14,6 +14,10 @@ Built on agents-tools/core 0.2.0.
 - `agents.json` and `agents.resolved` are written in Prettier's default JSON
   layout, as agents 0.2.0 writes them. A command that writes state rewrites a
   file in the earlier layout even when its content is unchanged.
+- `watch` reports instructions files in subdirectories of `instructions/` and
+  `.agents/instructions/`, named by their path inside the container, such as
+  `epd/review`; `watch diff` accepts that name. `AGENTS.md` and `GEMINI.md` in
+  those directories are no longer reported.
 
 ### Fixed
 
