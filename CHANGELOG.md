@@ -7,6 +7,22 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+Built on agents-tools/core 0.2.0.
+
+### Changed
+
+- `agents.json` and `agents.resolved` are written in Prettier's default JSON
+  layout, as agents 0.2.0 writes them. A command that writes state rewrites a
+  file in the earlier layout even when its content is unchanged.
+
+### Fixed
+
+- Commands no longer stop with `invalid section reference` in a project whose
+  declaration selects the project's own instructions files by bare name, as
+  agents 0.2.0 writes it; such a declaration may also omit `sources`.
+- Sources whose committed tree has a dangling symbolic link that stays inside
+  it, such as one to an uncommitted file, are installed instead of rejected.
+
 ## [0.3.2] - 2026-10-25
 
 Built on agents-tools/core 0.1.2.

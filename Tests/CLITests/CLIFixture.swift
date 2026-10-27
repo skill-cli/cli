@@ -102,7 +102,7 @@ final class CLIFixture {
   ) throws {
     let directory = source.appendingPathComponent(container)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    try Data("# \(heading)\n\n\(body)\n".utf8).write(
+    try Data("---\ndescription: Fixture instructions\n---\n\n# \(heading)\n\n\(body)\n".utf8).write(
       to: directory.appendingPathComponent(name + ".md"))
   }
 
