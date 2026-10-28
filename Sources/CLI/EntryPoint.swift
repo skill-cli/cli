@@ -3,7 +3,7 @@ import Darwin
 import Foundation
 
 enum BuildInfo {
-  static let version = "0.3.2"
+  static let version = "0.4.0"
 }
 
 struct SkillCLI: ParsableCommand {
