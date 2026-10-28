@@ -46,6 +46,11 @@ def skill(source, name, body):
           f"---\nname: {name}\ndescription: Parity fixture\n---\n\n{body}\n")
 
 
+def rules(source, body):
+    write(source / "instructions/rules.md",
+          f"---\ndescription: Parity fixture\n---\n\n# Rules\n\n{body}\n")
+
+
 def scenario(root, scope, mode, skill_command, agents_command):
     roots = [root / "skill", root / "agents"]
     environments = [environment(client) for client in roots]
@@ -86,6 +91,10 @@ def scenario(root, scope, mode, skill_command, agents_command):
         results = [result.stdout for result in results]
         if report:
             results = [json.loads(value) for value in results]
+            if arguments[0] in ("install", "update"):
+                # agents version 2 changed instruction targets only; skill reports carry none.
+                versions = [value.pop("schemaVersion") for value in results]
+                assert versions == [1, 2], (arguments, versions)
             if arguments[0] == "install":
                 instructions = results[1].pop("instructions")
                 assert not instructions["changed"], instructions
@@ -122,7 +131,7 @@ def scenario(root, scope, mode, skill_command, agents_command):
     write(source / "skills/demo/controls", "Old\ttext\r\n\x1b[31m\0\n")
     (source / "skills/demo/data.bin").write_bytes(bytes([0, 254]))
     (source / "skills/demo/link").symlink_to("SKILL.md")
-    write(source / "instructions/rules.md", "# Rules\n\nOriginal\n")
+    rules(source, "Original")
     initial = commit()
     both(["init", "local-skill"], skills=True)
     both(["list", str(source)], skills=True)
@@ -152,7 +161,7 @@ def scenario(root, scope, mode, skill_command, agents_command):
     skill(source, "demo", "Updated")
     skill(source, "new", "Added")
     shutil.rmtree(source / "skills/legacy")
-    write(source / "instructions/rules.md", "# Rules\n\nUpdated\n")
+    rules(source, "Updated")
     write(source / "skills/demo/run.sh", "echo parity\n")
     (source / "skills/demo/run.sh").chmod(0o755)
     (source / "skills/demo/old-empty").unlink()

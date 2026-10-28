@@ -133,7 +133,11 @@ identifiers; use the source ID and skill name for identity.
 ## Watch
 
 `skill watch` shares subscriptions with `agents watch` and reports skills,
-instruction units, and well-known artifacts through the same core operations.
+instructions files, and well-known artifacts through the same core operations.
+Instructions files are the `.md` files in a source's `instructions/` and
+`.agents/instructions/`, subdirectories included, other than `AGENTS.md` and
+`GEMINI.md`. Each is named by its path inside the container without `.md`, such
+as `epd/review`.
 
 `watch add <source>` subscribes without installing content and records the
 current baseline as seen. Repeating add acknowledges current content again.
