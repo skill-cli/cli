@@ -7,6 +7,8 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-28
+
 Built on agents-tools/core 0.2.0.
 
 ### Changed
@@ -16,8 +18,9 @@ Built on agents-tools/core 0.2.0.
   file in the earlier layout even when its content is unchanged.
 - `watch` reports instructions files in subdirectories of `instructions/` and
   `.agents/instructions/`, named by their path inside the container, such as
-  `epd/review`; `watch diff` accepts that name. `AGENTS.md` and `GEMINI.md` in
-  those directories are no longer reported.
+  `epd/review`; `watch diff` accepts that name.
+- **Breaking**: `watch` no longer reports `AGENTS.md` and `GEMINI.md` in
+  `instructions/` and `.agents/instructions/`, in its text or JSON output.
 
 ### Fixed
 
@@ -93,7 +96,8 @@ Built on agents-tools/core 0.1.1.
 - Adding or installing a skill never replaces a directory, file, or link that
   the scope's lock does not manage, such as a hand-written skill.
 
-[Unreleased]: https://github.com/skill-cli/cli/compare/v0.3.2...master
+[Unreleased]: https://github.com/skill-cli/cli/compare/v0.4.0...master
+[0.4.0]: https://github.com/skill-cli/cli/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/skill-cli/cli/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/skill-cli/cli/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/skill-cli/cli/compare/v0.2.2...v0.3.0
