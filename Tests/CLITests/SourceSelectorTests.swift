@@ -15,9 +15,11 @@ struct SourceSelectorTests {
     #expect(
       declaration.sources == [
         "source": SourceDeclaration(
-          kind: .local, location: fixture.source.path, requirement: .branch("main"))
+          kind: .local, location: fixture.source.path, requirement: .branch("main"), path: nil,
+          environment: SourceEnvironment(
+            projectDirectory: fixture.project, homeDirectory: fixture.home))
       ])
-    #expect(declaration.skills?["source"]?.select == .names(["demo"]))
+    #expect(try declaration.skills?["source"]?.select == .names(["demo"]))
   }
 
   @Test func sourceListingFiltersToTheSelectedSkill() throws {

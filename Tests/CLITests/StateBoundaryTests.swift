@@ -82,7 +82,7 @@ struct StateBoundaryTests {
       } else {
         #expect(try Data(contentsOf: store.watchURL) == watch)
       }
-      #expect(try store.loadDeclaration().instructions == declaration.instructions)
+      #expect(try store.loadDeclaration().instructions == (try declaration.instructions))
       #expect(try store.loadResolved().instructions == resolved.instructions)
       #expect(try store.loadResolved().sources[pin.source] == resolved.sources[pin.source])
       for path in targetPaths {

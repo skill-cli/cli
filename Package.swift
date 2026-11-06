@@ -10,7 +10,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.0"),
     .package(
       url: "https://github.com/agents-tools/core.git",
-      revision: "a2d734fb14cf2d93e7ddd8a6087d7c90453abea4"),
+      revision: "994b82027d12edd3d7c63187a534150086993f7f"),
   ],
   targets: [
     .executableTarget(
