@@ -35,11 +35,12 @@ struct UpdateOptions: ParsableArguments {
   }
 
   func run(names: [String] = []) throws {
-    let results = try withRecovery {
+    func operation() throws -> [UpdateResult] {
       try SkillOperations.updateInstalled(
         scope: location.scope, skillNames: names, apply: apply,
         beforeApply: { Terminal.differences($0, paths: location.paths) })
     }
+    let results = try apply ? withRecovery(operation) : operation()
     if json {
       try Terminal.json(UpdateReport(scope: location.scope.rawValue, results: results))
     } else if apply {

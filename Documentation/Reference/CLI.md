@@ -88,12 +88,12 @@ Requirement options on add map directly to declaration forms:
 
 | Option | Declaration | Matching versions |
 | --- | --- | --- |
-| `--branch main` | `"branch": "main"` | Git branch |
-| `--revision <rev>` | `"revision": "<rev>"` | Git revision |
-| `--exact 1.2.3` | `"exact": "1.2.3"` | Exact semantic version |
-| `--from 1.2.3` | `"from": "1.2.3"` | At least 1.2.3, below 2.0.0 |
-| `--up-to-next-minor-from 1.2.3` | `"upToNextMinor": "1.2.3"` | At least 1.2.3, below 1.3.0 |
-| `--from 1.2.3 --to 1.8.0` | `"from": "1.2.3", "to": "1.8.0"` | Half-open range [1.2.3, 1.8.0) |
+| `--branch main` | `branch: "main"` | Git branch |
+| `--revision <rev>` | `revision: "<rev>"` | Git revision |
+| `--exact 1.2.3` | `exact: "1.2.3"` | Exact semantic version |
+| `--from 1.2.3` | `from: "1.2.3"` | At least 1.2.3, below 2.0.0 |
+| `--up-to-next-minor-from 1.2.3` | `.upToNextMinor(from: "1.2.3")` | At least 1.2.3, below 1.3.0 |
+| `--from 1.2.3 --to 1.8.0` | `"1.2.3"..<"1.8.0"` | Half-open range [1.2.3, 1.8.0) |
 
 Choose one requirement form; `--to` requires `--from`. With no requirement,
 core uses the latest version tag or the default branch if there are no tags.
@@ -117,7 +117,7 @@ an `@` followed by one of these labels and `:`, so SSH locations such as
 `skill add larksuite/cli lark-base --from 1.0.0`. Use at most one requirement
 selector, one `@path:`, and one `@skill:`; percent-encode an `@` inside a value
 as `%40`. A selector and an option that give the same field must agree; both
-replace the branch and path of a hosted tree URL. `agents.json` stores the
+replace the branch and path of a hosted tree URL. `Agents.swift` stores the
 structured fields, and the alias comes from the location. `watch add` accepts
 requirement and path selectors; `@skill:` applies to `add` and `list <source>`.
 
@@ -212,7 +212,7 @@ baselines, installations, or source working trees. Uncommitted source files are
 ignored. Scheduling checks is left to the caller.
 
 Watch baselines live in `.agent/agents.watch` for project scope or
-`~/.agents/agents.watch` for user scope. `agents.json` owns subscriptions.
+`~/.agents/agents.watch` for user scope. `Agents.swift` owns subscriptions.
 A missing subscription suggests `Run 'skill watch' to list subscriptions`;
 an invalid revision suggests providing a Git revision that resolves to a commit
 in the watched source. Operation failures exit 1; invalid options and unknown
@@ -354,8 +354,32 @@ current directory and user scope uses HOME.
 
 | Scope | Declaration | Lock | Cache |
 | --- | --- | --- | --- |
-| Project | `.agent/agents.json` | `.agent/agents.resolved` | `.agent/cache/` |
-| User | `~/.agents/agents.json` | `~/.agents/agents.resolved` | `~/.agents/cache/` |
+| Project | `.agent/Agents.swift` | `.agent/agents.resolved` | `.agent/cache/` |
+| User | `~/.agents/Agents.swift` | `~/.agents/agents.resolved` | `~/.agents/cache/` |
+
+`Agents.swift` uses core's [manifest language](https://github.com/agents-tools/core/blob/master/Documentation/Reference/Manifest.md).
+Core statically parses it without compiling or executing user Swift. A declaration
+can combine skill and instruction components:
+
+```swift
+// agents-tools-version: 1.0
+import AgentsDescription
+
+let agents = Agents(
+  sources: [.source(name: "team", url: "https://github.com/owner/skills", branch: "main")],
+  components: [
+    .skills(source: "team", select: ["review"], agents: [.codex]),
+    .instructions(sections: ["guide"]),
+  ],
+  watch: ["team"]
+)
+```
+
+Skill operations edit the declaration through core's document layer. Semantic
+no-ops preserve every byte; changes preserve unrelated comments and ordering,
+instruction selections, locked instruction records and targets. A scope with
+lock or watch state but no `Agents.swift` fails with a missing-declaration error;
+restore the declaration from version control before retrying.
 
 Project roots are the current directory, not a search up the Git ancestry.
 Core resolves installation locations, including `CODEX_HOME`,
@@ -364,12 +388,19 @@ under HOME's `.agents` directory.
 
 Read commands and previews do not recover interrupted transactions or write
 declarations, locks, or installations. Doctor inspects existing state without
-fetching sources, writing caches, or creating locks. A pending transaction is
-reported as skill check `pending-recovery`. It is an error check: the state is
-inconsistent until recovery, so doctor sets `ok` to false and exits 1. Human
+fetching sources, writing caches, or creating locks. A recoverable pending
+transaction is
+reported as skill check `pending-recovery`; an unresolved conflict uses
+`unresolved-transaction` and retains core's locations and owner-action details.
+Both are error checks: the state is inconsistent until recovery, so doctor sets
+`ok` to false and exits 1. Human
 output includes the affected state directory. To finish recovery, run
 `skill install --scope user` for `~/.agents`, or run `skill install` in the
 project root for that project's `.agent` directory.
+
+Other read commands fail on pending recovery without changing the journal or
+scope state. An unresolved transaction conflict identifies retained locations;
+inspect those locations and resolve the conflict before retrying.
 
 Commands that change a scope finish pending recovery before proceeding. When
 core reports recovery, the CLI prints a notice on stderr and retries that
@@ -467,7 +498,8 @@ A healthy doctor report:
 ```
 
 Doctor checks include `kind: "skills"` alongside their IDs, severity, message,
-and optional path. `pending-recovery` is an error; other severities come from core.
+and optional path. `pending-recovery` and `unresolved-transaction` are errors;
+other severities come from core.
 `install --json` reports restored skill rows with `name`, `agent`, `mode`, and
 absolute `path`. These definitions are CLI-owned and do not expose core's
 encoded lock objects.

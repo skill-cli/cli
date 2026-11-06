@@ -10,7 +10,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.0"),
     .package(
       url: "https://github.com/agents-tools/core.git",
-      "0.2.0"..<"0.3.0"),
+      revision: "a2d734fb14cf2d93e7ddd8a6087d7c90453abea4"),
   ],
   targets: [
     .executableTarget(
@@ -20,7 +20,13 @@ let package = Package(
         .product(name: "AgentsCore", package: "core"),
         .product(name: "AgentsSkills", package: "core"),
       ]),
-    .testTarget(name: "CLITests", dependencies: ["CLI"]),
+    .testTarget(
+      name: "CLITests",
+      dependencies: [
+        "CLI",
+        .product(name: "AgentsManifest", package: "core"),
+        .product(name: "AgentsDescription", package: "core"),
+      ]),
   ],
   swiftLanguageModes: [.v6]
 )

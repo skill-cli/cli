@@ -71,12 +71,10 @@ struct ListSkills: ParsableCommand {
 
   func run() throws {
     if let source {
-      let outcome = try withRecovery {
-        try SkillOperations.add(
-          AddOptions(
-            source: source, agents: agents.recipients, scope: location.scope, listOnly: true,
-            fullDepth: discovery.fullDepth, path: discovery.path))
-      }
+      let outcome = try SkillOperations.add(
+        AddOptions(
+          source: source, agents: agents.recipients, scope: location.scope, listOnly: true,
+          fullDepth: discovery.fullDepth, path: discovery.path))
       if json {
         try Terminal.json(
           SourceListReport(scope: location.scope.rawValue, outcome: outcome))
@@ -84,9 +82,8 @@ struct ListSkills: ParsableCommand {
         Terminal.available(outcome.availableSkills)
       }
     } else {
-      let skills = try withRecovery {
-        try SkillOperations.listManaged(scope: location.scope, agents: agents.recipients)
-      }
+      let skills = try SkillOperations.listManaged(
+        scope: location.scope, agents: agents.recipients)
       if json {
         try Terminal.json(InstalledListReport(scope: location.scope.rawValue, skills: skills))
       } else if skills.isEmpty {

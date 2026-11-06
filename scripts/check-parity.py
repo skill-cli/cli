@@ -8,7 +8,7 @@ import shutil
 import subprocess
 
 PACKAGE = Path(__file__).resolve().parents[1]
-STATE_FILES = ("agents.json", "agents.resolved", "agents.watch")
+STATE_FILES = ("Agents.swift", "agents.resolved", "agents.watch")
 
 
 def execute(command, directory, environment=None):
@@ -234,10 +234,14 @@ def scenario(root, scope, mode, skill_command, agents_command):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--agents-package", type=Path, required=True)
+    parser.add_argument("--agents-revision", required=True,
+                        help="Reviewed full commit SHA of the agents candidate")
     parser.add_argument("--skill", type=Path, default=PACKAGE / ".build/debug/skill")
     args = parser.parse_args()
     reference = args.agents_package.expanduser().resolve()
-    revision = run(["git", "rev-parse", "HEAD"], reference).strip()
+    revision = run(["git", "rev-parse", args.agents_revision + "^{commit}"], reference).strip()
+    if revision != args.agents_revision:
+        parser.error("--agents-revision must be a full commit SHA")
     reference_root = PACKAGE / ".build/agents"
     source = reference_root / "source"
     if source.exists():

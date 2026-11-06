@@ -1,3 +1,4 @@
+import AgentsDescription
 import Foundation
 import Testing
 
@@ -79,7 +80,8 @@ struct UpdateReportingTests {
     let fixture = try CLIFixture()
     try fixture.skill("pdf")
     try fixture.success(["add", fixture.source.path, "pdf", "--mode", "edit"])
-    try selection(fixture) { $0["agents"] = ["claude-code", "cursor"] }
+    try fixture.replaceSkill(
+      .skills(source: "source", select: ["pdf"], mode: .edit, agents: [.claudeCode, .cursor]))
     let item = try updateItem(fixture.success(["update", "--json"]).json())
     #expect(item["oldVersion"] == nil && item["newVersion"] == nil)
     #expect(item["oldRevision"] == nil && item["newRevision"] == nil)
@@ -120,7 +122,7 @@ struct UpdateReportingTests {
     try fixture.skill("pdf")
     try fixture.success(["add", fixture.source.path, "pdf", "--mode", "edit", "--agent", "codex"])
     try FileManager.default.removeItem(at: fixture.state("agents.resolved"))
-    let declaration = try Data(contentsOf: fixture.state("agents.json"))
+    let declaration = try Data(contentsOf: fixture.state("Agents.swift"))
     let target = fixture.project.appendingPathComponent(".agents/skills/pdf")
     let destination = try FileManager.default.destinationOfSymbolicLink(atPath: target.path)
     let item = try updateItem(fixture.success(["update", "--json"]).json())
@@ -139,7 +141,7 @@ struct UpdateReportingTests {
     #expect(failed.status == 1)
     #expect(!failed.stdout.contains("Updated") && !failed.stdout.contains("Added"))
     #expect(failed.stderr.contains("an entry this scope does not manage already exists there"))
-    #expect(try Data(contentsOf: fixture.state("agents.json")) == declaration)
+    #expect(try Data(contentsOf: fixture.state("Agents.swift")) == declaration)
     #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.resolved").path))
     #expect(try FileManager.default.destinationOfSymbolicLink(atPath: target.path) == destination)
   }
@@ -155,7 +157,8 @@ struct UpdateReportingTests {
     #expect(added.hasSuffix("Added review for codex.\n"))
     try FileManager.default.removeItem(
       at: fixture.project.appendingPathComponent(".agents/skills/pdf"))
-    try selection(fixture) { $0["exclude"] = ["pdf"] }
+    try fixture.replaceSkill(
+      .skills(source: "source", exclude: ["pdf"], mode: .edit, agents: [.codex]))
     let item = try updateItem(fixture.success(["update", "--json"]).json())
     #expect((item["files"] as? [Any])?.isEmpty == true)
     let removed = try fixture.success(["update", "--apply"]).stdout
@@ -228,14 +231,4 @@ struct UpdateReportingTests {
     try #require((report["skills"] as? [[String: Any]])?.first)
   }
 
-  private func selection(_ fixture: CLIFixture, edit: (inout [String: Any]) -> Void) throws {
-    var declaration = try fixture.declaration()
-    var skills = try #require(declaration["skills"] as? [String: [String: Any]])
-    let alias = try #require(skills.keys.first)
-    var selection = try #require(skills[alias])
-    edit(&selection)
-    skills[alias] = selection
-    declaration["skills"] = skills
-    try JSONSerialization.data(withJSONObject: declaration).write(to: fixture.state("agents.json"))
-  }
 }

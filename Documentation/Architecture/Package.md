@@ -12,6 +12,8 @@ skill (executable product)
       ├─> AgentsCore
       └─> AgentsSkills ──> AgentsCore
   CLITests ──> CLI
+           ├─> AgentsManifest
+           └─> AgentsDescription
 ```
 
 `Package.swift` owns the graph and the core revision used during development;
@@ -24,7 +26,10 @@ for discovery, add, list, update, restore, removal, initialization, doctor, and
 watch subscriptions. `SkillOperations.watchOperations()` supplies skill discovery
 and artifact loading to core; watch also reports instruction units without
 rendering or installing them.
-`AgentsSkills` owns skill behavior; `AgentsCore` owns source identity,
+`AgentsSkills` owns skill behavior and uses `AgentsManifest` for static declaration
+parsing and byte-preserving edits. `AgentsDescription` owns its typed vocabulary.
+Tests use those modules directly to prepare declaration fixtures. `AgentsCore`
+owns source identity,
 requirements, cache, declaration, resolved state, transactions, recovery, and
 agent locations. Instruction declarations, locked records, and target files
 remain owned by instruction operations and are preserved by skill operations.
@@ -60,7 +65,8 @@ named update command for both selected and all-skill updates.
 | `Tests/CLITests/ExecutableTests.swift` | Lifecycle, help, output schemas, exits, environment isolation |
 | `Tests/CLITests/WatchParsingTests.swift` | Watch options, requirements, default status, and kind filters |
 | `Tests/CLITests/WatchExecutableTests.swift` | Watch lifecycle, read-only inspection, errors, recovery, and help |
-| `Tests/CLITests/WatchReportTests.swift` | Artifact reports, confirmation identities, and snapshot encoding |
+| `Tests/CLITests/WatchReportTests.swift` | Artifact reports and snapshot encoding |
+| `Tests/CLITests/ManifestBoundaryTests.swift` | Declaration no-ops, comments, missing declaration, and read-only pending recovery |
 | `Tests/CLITests/StateBoundaryTests.swift` | Instruction preservation and state ownership through the executable |
 
 ## Data Flow and State
@@ -73,11 +79,12 @@ installation roots for update previews and completion; no separate inventory
 read is needed. JSON retains exact snapshots and absolute paths.
 `install` uses exact locked pins and recipients.
 
-Project state is `.agent/agents.json`, `.agent/agents.resolved`, and
+Project state is `.agent/Agents.swift`, `.agent/agents.resolved`, and
 `.agent/agents.watch`; user state uses the same filenames under `~/.agents/`.
 Each scope has a `cache/` directory. Subscriptions live in the declaration;
 watch baselines live in `agents.watch`. Both CLIs share these formats.
-Watch status and diff may fetch sources but preserve declarations, locks,
+Watch mutations return core-owned confirmation identities. Status and diff may
+fetch sources but preserve declarations, locks,
 baselines, installations, and source working trees.
 Core owns validation, deterministic encoding, source mirrors, pinned content,
 installation paths, locking, transaction journals, and pruning. Read commands

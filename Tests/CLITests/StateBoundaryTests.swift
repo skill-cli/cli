@@ -1,7 +1,14 @@
 import AgentsCore
-import CryptoKit
+import AgentsDescription
+import AgentsManifest
 import Foundation
 import Testing
+
+#if canImport(CryptoKit)
+  import CryptoKit
+#else
+  import Crypto
+#endif
 
 struct StateBoundaryTests {
   @Test(arguments: [InstallScope.project, .user])
@@ -16,11 +23,20 @@ struct StateBoundaryTests {
       environment: RuntimeEnvironment(
         projectDirectory: fixture.project, homeDirectory: fixture.home,
         environment: fixture.environment))
-    var declaration = try store.loadDeclaration()
-    let alias = try #require(declaration.sources.keys.first)
-    declaration.instructions = InstructionsDeclaration(
-      agents: [.codex], sections: ["\(alias):rules"],
-      chatgpt: ["daily": PromptDeclaration(sections: ["\(alias):rules"], append: "custom.md")])
+    let alias = try #require(try store.loadDeclaration().sources.keys.first)
+    try fixture.editManifest(scope: scope.rawValue) { _ in
+      [
+        .insertComponent(
+          .instructions(
+            sections: [.section(name: "rules", source: alias)],
+            chatGPT: [
+              .prompt(
+                name: "daily", sections: [.section(name: "rules", source: alias)],
+                append: "custom.md")
+            ], agents: [.codex]), into: .root, at: .first)
+      ]
+    }
+    let declaration = try store.loadDeclaration()
     var resolved = try store.loadResolved()
     let pin = try #require(resolved.skills["demo"])
     let section = LockedSection(
@@ -35,7 +51,9 @@ struct StateBoundaryTests {
         targetKey: LockedTarget(
           agents: [.codex], headingOffset: 0, blockHash: section.hash, created: false)
       ])
-    try store.save(declaration: declaration, resolved: resolved)
+    try JSONEncoder().encode(resolved).write(to: store.resolvedURL)
+    try fixture.success(["watch", "add", fixture.source.path] + scopeArguments)
+    var watch = try Data(contentsOf: store.watchURL)
     let targetPaths =
       scope == .user
       ? [".codex/AGENTS.md", ".claude/CLAUDE.md", ".gemini/GEMINI.md", "custom.md"]
@@ -59,6 +77,11 @@ struct StateBoundaryTests {
       ["watch", "remove", fixture.source.path], ["remove", "demo"],
     ] {
       try fixture.success(command + scopeArguments)
+      if command.first == "watch" {
+        watch = try Data(contentsOf: store.watchURL)
+      } else {
+        #expect(try Data(contentsOf: store.watchURL) == watch)
+      }
       #expect(try store.loadDeclaration().instructions == declaration.instructions)
       #expect(try store.loadResolved().instructions == resolved.instructions)
       #expect(try store.loadResolved().sources[pin.source] == resolved.sources[pin.source])
@@ -92,12 +115,16 @@ struct StateBoundaryTests {
       """.utf8)
     let declaration = Data(
       """
-      {
-        "instructions": {
-          "agents": ["claude-code", "codex"],
-          "sections": ["guide"]
-        }
-      }
+      // agents-tools-version: 1.0
+      import AgentsDescription
+
+      // Repository-owned instruction order and comments.
+      let agents = Agents(
+        components: [
+          // Guide belongs to both recipients.
+          .instructions(sections: ["guide"], agents: [.claudeCode, .codex]),
+        ]
+      )
 
       """.utf8)
     let resolved = Data(
@@ -129,7 +156,7 @@ struct StateBoundaryTests {
 
       """.utf8)
     let files = [
-      ".agent/agents.json": declaration, ".agent/agents.resolved": resolved,
+      ".agent/Agents.swift": declaration, ".agent/agents.resolved": resolved,
       ".agent/instructions/guide.md": own, "AGENTS.md": agentsFile,
     ]
     for (path, bytes) in files {
@@ -155,9 +182,10 @@ struct StateBoundaryTests {
       try fixture.success(command)
       #expect(try store.loadDeclaration().instructions == instructions)
       #expect(try store.loadResolved().instructions == lockedInstructions)
-      for name in ["agents.json", "agents.resolved"] {
-        #expect(!(try String(contentsOf: fixture.state(name), encoding: .utf8)).contains("\" : "))
-      }
+      let text = try String(contentsOf: fixture.state("Agents.swift"), encoding: .utf8)
+      #expect(text.contains("// Repository-owned instruction order and comments."))
+      #expect(text.contains("// Guide belongs to both recipients."))
+      #expect(text.contains(".instructions(sections: [\"guide\"], agents: [.claudeCode, .codex])"))
       for path in [".agent/instructions/guide.md", "AGENTS.md"] {
         #expect(try Data(contentsOf: fixture.project.appendingPathComponent(path)) == files[path])
       }
@@ -179,7 +207,7 @@ struct StateBoundaryTests {
     }
     try fixture.success(["add", fixture.source.path, "--scope", scope])
     try fixture.success(["install", "--scope", scope])
-    for name in ["agents.json", "agents.resolved"] {
+    for name in ["Agents.swift", "agents.resolved"] {
       #expect(FileManager.default.fileExists(atPath: fixture.state(name, scope: scope).path))
     }
     for name in legacy {

@@ -1,6 +1,11 @@
 import ArgumentParser
-import Darwin
 import Foundation
+
+#if canImport(Darwin)
+  import Darwin
+#else
+  import Glibc
+#endif
 
 enum BuildInfo {
   static let version = "0.4.0"
@@ -52,7 +57,7 @@ enum EntryPoint {
       }
       Terminal.error(
         SkillCLI.message(for: error), remedy: "Run 'skill --help' for usage.")
-      Darwin.exit(64)
+      exit(64)
     }
     do {
       try command.run()
@@ -63,11 +68,11 @@ enum EntryPoint {
         return
       }
       if let code = error as? ExitCode {
-        Darwin.exit(code.rawValue)
+        exit(code.rawValue)
       }
       Terminal.error(
         String(describing: error), remedy: Terminal.failureRemedy(error, command: command))
-      Darwin.exit(1)
+      exit(1)
     }
   }
 

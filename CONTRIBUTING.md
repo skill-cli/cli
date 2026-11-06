@@ -11,7 +11,11 @@ Requires macOS 15 or later and Swift 6.3 or later.
 
 ```sh
 swift build
-env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
+(
+  test_home=$(mktemp -d) &&
+    trap 'rm -rf "$test_home"' EXIT &&
+    env -i PATH="$PATH" HOME="$test_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null swift test
+)
 swift build -c release
 swift format lint --strict --configuration .swift-format --recursive Package.swift Sources Tests
 ```
@@ -38,7 +42,8 @@ Required checks are exactly `policy / policy` and `validate / result`.
 
 The shared workflows live in
 [agents-tools/github-workflows](https://github.com/agents-tools/github-workflows).
-The single compiler entry uses Xcode 26.6 on macOS 26. Formatting covers
+The macOS compiler entry uses Xcode 26.6 on macOS 26. Linux validation uses
+the digest-pinned Swift image in `.github/swift-package.json`. Formatting covers
 `Package.swift`, `Sources`, and `Tests` with `.swift-format`.
 The demo job builds `skill`, re-records `.github/assets/terminal/script.yml`,
 and uploads the regenerated `recording.json` on drift for review and commit.
@@ -61,10 +66,10 @@ This is a manual check. To compare the shared command contract with a read-only
 `agents` checkout:
 
 ```sh
-python3 scripts/check-parity.py --agents-package /path/to/agents-tools/cli
+python3 scripts/check-parity.py --agents-package /path/to/agents-tools/cli --agents-revision <full-commit-sha>
 ```
 
-Build `skill` first. The runner archives the reference checkout's HEAD and builds
+Build `skill` first. The runner archives the specified reference commit and builds
 `agents` under this worktree's `.build/agents`, uses isolated environments, and
 removes its `.agent/parity` fixtures. It compares lifecycle and watch state bytes,
 JSON reports, human stdout and stderr, and watch help across project/user scope
@@ -78,8 +83,9 @@ links, executable-mode changes, removals, and multiline Git diagnostics.
 - Keep parsing, terminal output, recovery presentation, and exit codes in
   `Sources/CLI`; test them in `Tests/CLITests`.
 - Port shared command changes from agents-tools/cli, keeping the layout parallel.
-- Change reusable behavior and its tests in agents-tools/core. This package
-  consumes `AgentsCore` and `AgentsSkills` only.
+- Change reusable behavior and its tests in agents-tools/core. The command target
+  consumes `AgentsCore` and `AgentsSkills`; declaration fixtures use
+  `AgentsManifest` and `AgentsDescription`.
 - Keep instruction state and target files untouched by skill commands.
 - Update the CLI reference, schemas, companion skill, and architecture when
   their contracts change. Keep historical records in their owning directories.

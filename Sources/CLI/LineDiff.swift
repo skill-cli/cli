@@ -87,7 +87,7 @@ enum LineDiff {
   private static func lines(_ data: Data) -> [Line]? {
     guard let text = String(data: data, encoding: .utf8) else { return nil }
     if text.isEmpty { return [] }
-    var parts = text.components(separatedBy: "\n")
+    var parts = Terminal.splitLines(text)
     let terminated = data.last == 10
     if terminated { parts.removeLast() }
     return parts.enumerated().map {

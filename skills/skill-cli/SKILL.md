@@ -8,16 +8,19 @@ description: Use the skill CLI to add, list, restore, update, remove, initialize
 Use the installed `skill` executable (`swift-skill` is equivalent) to manage
 skills for Codex, Claude Code, Cursor, Gemini CLI, and OpenCode. Run
 `skill --version` and `skill <command> --help` to inspect the available build.
-These instructions describe the 0.3 command surface.
+These instructions describe the command surface in this repository.
 
 ## Choose Scope and Recipients
 
 Project scope is the default and uses the current directory. Change directory
 to the intended project before running commands. Use `--scope user` for HOME's
-shared state. Declaration and lock files are `agents.json` and `agents.resolved`
+shared state. Declaration and lock files are `Agents.swift` and `agents.resolved`
 in project `.agent/` or user `~/.agents/`; core owns their validation and writes.
-Instruction declarations, locked records, and target files stay untouched.
-Watch subscriptions in `agents.json` and baselines in `agents.watch` are shared
+Core statically parses `Agents.swift` without executing Swift. Skill operations
+preserve unrelated declaration comments and ordering. Instruction declarations,
+locked records, and target files stay untouched. Restore a missing `Agents.swift`
+from version control when the scope already has lock or watch state.
+Watch subscriptions in `Agents.swift` and baselines in `agents.watch` are shared
 with `agents watch`; reports include skills, instruction units, and artifacts.
 
 For add, repeat `--agent` to choose recipients, for example
@@ -155,7 +158,10 @@ doctor errors, and `64` for usage errors. Read the one-line stderr remedy on
 failure. Read commands may fetch/cache data; doctor inspects existing state
 without fetching or writing. Pending recovery is an error check with the affected
 state path. Run `skill install --scope user` for user state or `skill install`
-in the affected project root. Mutating commands recover pending transactions,
+in the affected project root. Other read commands fail on pending recovery
+without changing it. An unresolved conflict names retained locations; inspect
+and resolve that conflict before retrying. Mutating commands recover pending
+transactions,
 report on stderr, and retry once.
 
 See [the CLI reference](https://github.com/skill-cli/cli/blob/master/Documentation/Reference/CLI.md)

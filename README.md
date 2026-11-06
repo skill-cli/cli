@@ -99,10 +99,12 @@ skill init my-skill
 skill doctor --root /path/to/project-a /path/to/project-b --json
 ```
 
-Project scope uses the current directory and stores `agents.json`,
+Project scope uses the current directory and stores `Agents.swift`,
 `agents.resolved`, `agents.watch`, and `cache/` under `.agent/`. `--scope user`
-uses `~/.agents/`. Commit the project's `agents.json` declaration and
+uses `~/.agents/`. Commit the project's `Agents.swift` declaration and
 `agents.resolved` lock; keep `agents.watch` and caches out of version control.
+Core statically parses `Agents.swift` without executing Swift. Skill changes
+preserve unrelated declaration comments, ordering, and instruction state.
 
 `add` installs in `link` mode for the recipients already recorded for that skill
 or source, otherwise for the declaration's default agents (initially Codex and
@@ -169,10 +171,14 @@ CI contexts. The [development section](#development) gets a local build running.
 ```sh
 swift build
 swift run skill --help
-env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
+(
+  test_home=$(mktemp -d) &&
+    trap 'rm -rf "$test_home"' EXIT &&
+    env -i PATH="$PATH" HOME="$test_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null swift test
+)
 ```
 
-The package depends on agents-tools/core `"0.2.0"..<"0.3.0"`. The build-time
+The package pins agents-tools/core to the revision in `Package.swift`. The build-time
 version is `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`.
 
 ## License
