@@ -1,8 +1,9 @@
 # Package Architecture
 
 `skill-cli` builds the `skill` executable, a skills command layer over
-[agents-tools/core](https://github.com/agents-tools/core). It uses Swift 6.3,
-Swift 6 language mode, and a macOS 15 minimum deployment target.
+[agents-tools/core](https://github.com/agents-tools/core). Source builds support
+macOS and Linux. `Package.swift` owns the Swift language/toolchain and macOS
+deployment minimums; `.github/swift-package.json` pins the CI toolchains.
 
 ## Products and Ownership
 
@@ -10,6 +11,7 @@ Swift 6 language mode, and a macOS 15 minimum deployment target.
 skill (executable product)
   CLI ──> ArgumentParser
       ├─> AgentsCore
+      ├─> AgentsManifest (diagnostic value types)
       └─> AgentsSkills ──> AgentsCore
   CLITests ──> CLI
            ├─> AgentsManifest
@@ -21,7 +23,8 @@ skill (executable product)
 `AgentsInstructions` or on the `agents` CLI package.
 
 The CLI owns argument validation, help, version output, JSON report schemas,
-terminal rendering, recovery notices, and exit codes. It calls `SkillOperations`
+terminal rendering, recovery notices, and exit codes. It displays located
+`ManifestFailure` diagnostics using `AgentsManifest` value types and calls `SkillOperations`
 for discovery, add, list, update, restore, removal, initialization, doctor, and
 watch subscriptions. `SkillOperations.watchOperations()` supplies skill discovery
 and artifact loading to core; watch also reports instruction units without

@@ -18,6 +18,7 @@ let package = Package(
       dependencies: [
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "AgentsCore", package: "core"),
+        .product(name: "AgentsManifest", package: "core"),
         .product(name: "AgentsSkills", package: "core"),
       ]),
     .testTarget(

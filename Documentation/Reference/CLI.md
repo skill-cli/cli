@@ -416,6 +416,11 @@ stderr. Human paths are project-relative inside the project in project scope,
 for example `local:~/Developer/team-rules`. Installed skill listings use the
 same path rules. JSON retains full revisions, hashes, and absolute paths.
 
+Manifest failures report each diagnostic as
+`<path>:<line>:<column>: <severity> [<code>]: <message>`, followed by any related
+locations. The remedy asks you to fix the reported `Agents.swift` diagnostics
+and retry. These failures exit 1 and leave stdout empty, including with `--json`.
+
 Errors preserve line breaks. The first line starts with `Error: `; every
 continuation line is indented by two spaces, including Git stderr and remote
 text that itself begins with `Error:`. Trailing blank lines are dropped.

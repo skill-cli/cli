@@ -71,7 +71,7 @@ enum EntryPoint {
         exit(code.rawValue)
       }
       Terminal.error(
-        String(describing: error), remedy: Terminal.failureRemedy(error, command: command))
+        Terminal.failureMessage(error), remedy: Terminal.failureRemedy(error, command: command))
       exit(1)
     }
   }

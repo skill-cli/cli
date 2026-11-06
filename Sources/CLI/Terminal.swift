@@ -1,4 +1,5 @@
 import AgentsCore
+import AgentsManifest
 import AgentsSkills
 import ArgumentParser
 import Foundation
@@ -74,6 +75,8 @@ enum Terminal {
   static func failureRemedy(_ error: Error, command: any ParsableCommand) -> String {
     let action: String
     switch error {
+    case is ManifestFailure:
+      action = "fix the reported Agents.swift diagnostics and retry"
     case CoreError.transactionRecovered:
       action = "retry the command after other writers finish"
     case CoreError.recoveryPending(let message)
@@ -114,6 +117,21 @@ enum Terminal {
       action = "check the command arguments and filesystem permissions"
     }
     return action
+  }
+
+  static func failureMessage(_ error: Error) -> String {
+    if let failure = error as? ManifestFailure {
+      return failure.diagnostics.map { diagnostic in
+        let span = diagnostic.span
+        let primary =
+          "\(span.document.rawValue):\(span.line):\(span.column): \(diagnostic.severity.rawValue) [\(diagnostic.code)]: \(diagnostic.message)"
+        let related = diagnostic.related.map {
+          "\($0.document.rawValue):\($0.line):\($0.column): related location"
+        }
+        return ([primary] + related).joined(separator: "\n")
+      }.joined(separator: "\n")
+    }
+    return String(describing: error)
   }
 
   static func json(_ value: some Encodable) throws {

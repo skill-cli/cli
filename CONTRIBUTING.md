@@ -7,7 +7,7 @@ for commits, review, and delivery.
 
 ## Development Loop
 
-Requires macOS 15 or later and Swift 6.3 or later.
+Requires Swift 6.3 or later on macOS 15 or later, or Linux.
 
 ```sh
 swift build
@@ -84,8 +84,8 @@ links, executable-mode changes, removals, and multiline Git diagnostics.
   `Sources/CLI`; test them in `Tests/CLITests`.
 - Port shared command changes from agents-tools/cli, keeping the layout parallel.
 - Change reusable behavior and its tests in agents-tools/core. The command target
-  consumes `AgentsCore` and `AgentsSkills`; declaration fixtures use
-  `AgentsManifest` and `AgentsDescription`.
+  calls `SkillOperations` and uses `AgentsManifest` value types to display
+  diagnostics; declaration fixtures also use `AgentsDescription`.
 - Keep instruction state and target files untouched by skill commands.
 - Update the CLI reference, schemas, companion skill, and architecture when
   their contracts change. Keep historical records in their owning directories.
