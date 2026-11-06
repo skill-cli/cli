@@ -16,7 +16,7 @@
 <p align="center">
   <a href="https://github.com/skill-cli/cli/actions/workflows/ci.yml"><img src="https://github.com/skill-cli/cli/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
   <a href="Package.swift"><img src="https://img.shields.io/badge/Swift-6.3%2B-F05138" alt="Swift 6.3+"></a>
-  <a href="Package.swift"><img src="https://img.shields.io/badge/platforms-macOS%2015%2B-lightgrey" alt="Platforms: macOS 15+"></a>
+  <a href="Package.swift"><img src="https://img.shields.io/badge/platforms-macOS%2015%2B%20%7C%20Linux-lightgrey" alt="Platforms: macOS 15+ and Linux"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
 </p>
 
@@ -59,9 +59,10 @@ upstream update:
 
 ## Install
 
-Source and HEAD builds require macOS 15 or later. Stable Homebrew releases retain
-their published requirements; the formula's macOS minimum changes with the
-release that raises it.
+Source builds support macOS 15 or later and Linux. The Linux CI toolchain is
+pinned in [the package validation configuration](.github/swift-package.json).
+Stable Homebrew releases retain their published requirements; the formula's
+macOS minimum changes with the release that raises it.
 
 Install the latest stable release from the Homebrew tap:
 
@@ -99,10 +100,12 @@ skill init my-skill
 skill doctor --root /path/to/project-a /path/to/project-b --json
 ```
 
-Project scope uses the current directory and stores `agents.json`,
+Project scope uses the current directory and stores `Agents.swift`,
 `agents.resolved`, `agents.watch`, and `cache/` under `.agent/`. `--scope user`
-uses `~/.agents/`. Commit the project's `agents.json` declaration and
+uses `~/.agents/`. Commit the project's `Agents.swift` declaration and
 `agents.resolved` lock; keep `agents.watch` and caches out of version control.
+Core statically parses `Agents.swift` without executing Swift. Skill changes
+preserve unrelated declaration comments, ordering, and instruction state.
 
 `add` installs in `link` mode for the recipients already recorded for that skill
 or source, otherwise for the declaration's default agents (initially Codex and
@@ -141,7 +144,7 @@ skill add . --path skills/skill-cli --scope user --agent codex --mode edit
 
 ## Requirements
 
-- macOS 15 or later
+- macOS 15 or later, or Linux
 - Swift 6.3 or later to build from source
 - Git for source repositories
 
@@ -169,10 +172,14 @@ CI contexts. The [development section](#development) gets a local build running.
 ```sh
 swift build
 swift run skill --help
-env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u XDG_CONFIG_HOME -u XDG_STATE_HOME -u XDG_CACHE_HOME swift test
+(
+  test_home=$(mktemp -d) &&
+    trap 'rm -rf "$test_home"' EXIT &&
+    env -i PATH="$PATH" HOME="$test_home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null swift test
+)
 ```
 
-The package depends on agents-tools/core `"0.2.0"..<"0.3.0"`. The build-time
+The package pins agents-tools/core to the revision in `Package.swift`. The build-time
 version is `BuildInfo.version` in `Sources/CLI/EntryPoint.swift`.
 
 ## License

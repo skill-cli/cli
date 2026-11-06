@@ -1,3 +1,4 @@
+import AgentsCore
 import Foundation
 import Testing
 
@@ -11,10 +12,14 @@ struct SourceSelectorTests {
       "add", fixture.source.path + "@branch:main@skill:demo", "--agent", "codex",
     ])
     let declaration = try fixture.declaration()
-    let sources = try #require(declaration["sources"] as? [String: [String: String]])
-    #expect(sources == ["source": ["local": fixture.source.path, "branch": "main"]])
-    let skills = try #require(declaration["skills"] as? [String: [String: Any]])
-    #expect(skills["source"]?["select"] as? [String] == ["demo"])
+    #expect(
+      declaration.sources == [
+        "source": SourceDeclaration(
+          kind: .local, location: fixture.source.path, requirement: .branch("main"), path: nil,
+          environment: SourceEnvironment(
+            projectDirectory: fixture.project, homeDirectory: fixture.home))
+      ])
+    #expect(try declaration.skills?["source"]?.select == .names(["demo"]))
   }
 
   @Test func sourceListingFiltersToTheSelectedSkill() throws {
@@ -35,7 +40,7 @@ struct SourceSelectorTests {
     ])
     #expect(result.status == 1)
     #expect(result.stderr.contains("different requirements"))
-    #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.json").path))
+    #expect(!FileManager.default.fileExists(atPath: fixture.state("Agents.swift").path))
   }
 
   @Test func sourcesSharingALastComponentGetDistinctAliases() throws {
@@ -48,7 +53,7 @@ struct SourceSelectorTests {
     try fixture.git(["clone", "--quiet", fixture.source.path, mirror.path])
     try fixture.success(["add", fixture.source.path, "--agent", "codex"])
     try fixture.success(["watch", "add", mirror.path])
-    let watched = try #require(try fixture.declaration()["sources"] as? [String: Any])
+    let watched = try fixture.declaration().sources
     #expect(Set(watched.keys) == ["source", "mirror-source"])
   }
 }

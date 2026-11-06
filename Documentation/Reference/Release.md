@@ -7,8 +7,10 @@ the [skill tap](https://github.com/skill-cli/homebrew-tap#readme) owns formula
 maintenance and publication. Tagging, releases, and tap publication require
 maintainer authorization.
 
-The CLI requires macOS 15 or later; building from source requires Swift 6.3 or later.
-Shared CI compiles and tests only with Xcode 26.6 on macOS 26.
+Source builds support macOS 15 or later and Linux with Swift 6.3 or later.
+Shared CI validates macOS with Xcode and Linux with the digest-pinned Swift image
+specified in [the package validation configuration](../../.github/swift-package.json).
+Homebrew release requirements belong to the tap's published formula.
 
 Each block is a single command chain that stops at the first failure; tagging
 and publishing each refuse to run unless the earlier blocks set their markers.

@@ -1,4 +1,5 @@
 import AgentsCore
+import AgentsManifest
 import AgentsSkills
 import ArgumentParser
 import Foundation
@@ -37,7 +38,7 @@ enum Terminal {
       }
       return text
     }
-    var lines = message.components(separatedBy: "\n")
+    var lines = splitLines(message)
     while let last = lines.last, last.allSatisfy({ " \t\r".contains($0) }) {
       lines.removeLast()
     }
@@ -66,11 +67,26 @@ enum Terminal {
     }.joined()
   }
 
+  /// Splits physical LF scalars, retaining CR content, empty lines and the trailing empty segment.
+  static func splitLines(_ text: String) -> [String] {
+    text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false).map { String($0) }
+  }
+
   static func failureRemedy(_ error: Error, command: any ParsableCommand) -> String {
     let action: String
     switch error {
+    case is ManifestFailure:
+      action = "fix the reported Agents.swift diagnostics and retry"
     case CoreError.transactionRecovered:
       action = "retry the command after other writers finish"
+    case CoreError.recoveryPending(let message)
+    where message.hasPrefix("Unresolved transaction conflict"):
+      action = "inspect the retained locations and resolve the transaction conflict before retrying"
+    case CoreError.recoveryPending:
+      action =
+        "run 'skill install' in the same scope (add --scope user for user state) to finish recovery"
+    case CoreError.missingDeclaration:
+      action = "restore Agents.swift from version control before retrying"
     case CoreError.notFound(let message) where message.hasPrefix("source is not subscribed:"):
       action = "run 'skill watch' to list subscriptions"
     case CoreError.invalidSource("expected a local path or repository URL")
@@ -94,13 +110,28 @@ enum Terminal {
     case CoreError.invalidSkill:
       action = "check SKILL.md and existing installations with 'skill doctor'"
     case CoreError.invalidState:
-      action = "check the scope's agents.json, agents.resolved, and recovery journal"
+      action = "check the scope's Agents.swift, agents.resolved, and recovery journal"
     case CoreError.commandFailed:
       action = "check the command arguments and filesystem permissions"
     default:
       action = "check the command arguments and filesystem permissions"
     }
     return action
+  }
+
+  static func failureMessage(_ error: Error) -> String {
+    if let failure = error as? ManifestFailure {
+      return failure.diagnostics.map { diagnostic in
+        let span = diagnostic.span
+        let primary =
+          "\(span.document.rawValue):\(span.line):\(span.column): \(diagnostic.severity.rawValue) [\(diagnostic.code)]: \(diagnostic.message)"
+        let related = diagnostic.related.map {
+          "\($0.document.rawValue):\($0.line):\($0.column): related location"
+        }
+        return ([primary] + related).joined(separator: "\n")
+      }.joined(separator: "\n")
+    }
+    return String(describing: error)
   }
 
   static func json(_ value: some Encodable) throws {

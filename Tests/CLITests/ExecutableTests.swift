@@ -32,7 +32,7 @@ struct ExecutableTests {
     #expect(humanList.contains(displayPath))
     #expect(!humanList.contains(installed.path))
     let lock = try Data(contentsOf: fixture.state("agents.resolved", scope: scope))
-    let declaration = try Data(contentsOf: fixture.state("agents.json", scope: scope))
+    let declaration = try Data(contentsOf: fixture.state("Agents.swift", scope: scope))
     try FileManager.default.removeItem(at: installed)
     let missing = try fixture.success(["doctor", "--json"] + scopeArguments).json()
     let roots = try #require(missing["roots"] as? [[String: Any]])
@@ -74,7 +74,7 @@ struct ExecutableTests {
     #expect(Data(base64Encoded: try #require(before["base64"] as? String)) == original)
     #expect(try Data(contentsOf: file) == original)
     #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
-    #expect(try Data(contentsOf: fixture.state("agents.json", scope: scope)) == declaration)
+    #expect(try Data(contentsOf: fixture.state("Agents.swift", scope: scope)) == declaration)
     let applied = try fixture.success(["update", "--apply"] + scopeArguments)
     let diffIndex = try #require(applied.stdout.range(of: "+Updated upstream content")?.lowerBound)
     let appliedIndex = try #require(
@@ -98,7 +98,7 @@ struct ExecutableTests {
     let available = try fixture.success(["add", fixture.source.path])
     #expect(available.stdout.contains("one") && available.stdout.contains("two"))
     #expect(available.stdout.contains("--all"))
-    #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.json").path))
+    #expect(!FileManager.default.fileExists(atPath: fixture.state("Agents.swift").path))
     let list = try fixture.success([
       "list", fixture.source.path, "--full-depth", "--path", "skills", "--json",
     ]).json()
@@ -160,7 +160,7 @@ struct ExecutableTests {
       #expect(root["scope"] as? String == "project")
       #expect((root["checks"] as? [Any])?.isEmpty == true)
     }
-    #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.json").path))
+    #expect(!FileManager.default.fileExists(atPath: fixture.state("Agents.swift").path))
     #expect(
       !FileManager.default.fileExists(atPath: fixture.project.appendingPathComponent(".agent").path)
     )
@@ -195,19 +195,20 @@ struct ExecutableTests {
   }
 
   @Test(arguments: ["project", "user"], ["transaction.json", "transaction.new"])
-  func doctorLeavesPendingRecoveryUnchanged(scope: String, journal: String) throws {
+  func doctorLeavesRecoveryUnchanged(scope: String, journal: String) throws {
     let fixture = try CLIFixture()
     let state = fixture.state("", scope: scope)
     let cache = fixture.state("cache/content", scope: scope)
     try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
     let files = [
-      fixture.state(journal, scope: scope), fixture.state("agents.json", scope: scope),
+      fixture.state(journal, scope: scope), fixture.state("Agents.swift", scope: scope),
       fixture.state("agents.resolved", scope: scope), cache.appendingPathComponent("snapshot"),
     ]
     for (file, content) in zip(
       files,
       [
-        Data("{}".utf8), Data("incomplete declaration".utf8), Data("incomplete lock".utf8),
+        Data("unfinished journal".utf8), Data("incomplete declaration".utf8),
+        Data("incomplete lock".utf8),
         Data([0, 255]),
       ])
     {
@@ -219,6 +220,7 @@ struct ExecutableTests {
       scope == "user"
       ? "run 'skill install --scope user' to finish recovery"
       : "run 'skill install' in '\(fixture.project.path)' to finish recovery"
+    let unresolved = journal == "transaction.json"
     for json in [false, true] {
       let result = try fixture.run(["doctor", "--scope", scope] + (json ? ["--json"] : []))
       #expect(result.status == 1 && result.stderr.isEmpty)
@@ -232,16 +234,23 @@ struct ExecutableTests {
         #expect(checks.count == 1)
         #expect(checks.compactMap { $0["kind"] as? String } == ["skills"])
         #expect(
-          checks.compactMap { $0["id"] as? String } == ["pending-recovery"])
+          checks.compactMap { $0["id"] as? String }
+            == [unresolved ? "unresolved-transaction" : "pending-recovery"])
         for check in checks {
           #expect(Set(check.keys) == ["kind", "id", "status", "message", "path"])
           #expect(check["status"] as? String == "error")
-          #expect((check["message"] as? String)?.contains(remedy) == true)
+          #expect(
+            (check["message"] as? String)?.contains(
+              unresolved ? "Unresolved transaction conflict" : remedy) == true)
           #expect(check["path"] as? String == state.path)
         }
       } else {
-        #expect(result.stdout.contains("skills error: Transaction recovery is pending"))
-        #expect(result.stdout.contains(remedy))
+        #expect(
+          result.stdout.contains(
+            unresolved
+              ? "skills error: Unresolved transaction conflict"
+              : "skills error: Transaction recovery is pending"))
+        #expect(result.stdout.contains(unresolved ? "Retained locations:" : remedy))
         #expect(result.stdout.contains(scope == "user" ? "(~/.agents)" : "(.agent)"))
       }
       #expect(try FileManager.default.subpathsOfDirectory(atPath: state.path).sorted() == paths)

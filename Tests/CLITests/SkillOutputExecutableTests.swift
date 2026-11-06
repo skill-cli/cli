@@ -1,3 +1,4 @@
+import AgentsDescription
 import Foundation
 import Testing
 
@@ -60,8 +61,10 @@ struct SkillOutputExecutableTests {
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
     let revision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
-    for mode in ["copy", "edit", "link"] {
-      try changeSelection(fixture) { $0["mode"] = mode }
+    for (mode, value): (String, AgentsDescription.InstallMode) in [
+      ("copy", .copy), ("edit", .edit), ("link", .link),
+    ] {
+      try fixture.replaceSkill(.skills(source: "source", select: ["pdf"], mode: value))
       let output = try fixture.success(["update", "--apply"]).stdout
       let old = mode == "copy" ? "link" : mode == "edit" ? "copy" : "edit"
       #expect(output.contains("  ~ changed  codex (\(old) -> \(mode))  .agents/skills/pdf\n"))
@@ -101,16 +104,16 @@ struct SkillOutputExecutableTests {
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
     let revision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
-    try changeSelection(fixture) { $0["agents"] = ["codex"] }
+    try fixture.replaceSkill(.skills(source: "source", select: ["pdf"], agents: [.codex]))
     let partial = try fixture.success(["update", "--apply"]).stdout
     #expect(partial.contains("--- a/pdf/SKILL.md\n+++ /dev/null\n"))
     #expect(!partial.contains("link pdf:"))
     #expect(
       partial.hasSuffix(
         "Removed pdf for claude-code.\nUpdated pdf for codex: \(revision) -> \(revision).\n"))
-    var declaration = try fixture.declaration()
-    declaration["skills"] = [String: Any]()
-    try JSONSerialization.data(withJSONObject: declaration).write(to: fixture.state("agents.json"))
+    try fixture.editManifest { document in
+      [.removeComponent(try #require(document.node(at: "/components/0")))]
+    }
     let removed = try fixture.success(["update", "--apply"]).stdout
     #expect(removed.contains("--- a/pdf/SKILL.md\n+++ /dev/null\n"))
     #expect(removed.hasSuffix("Removed pdf for codex.\n"))
@@ -186,14 +189,4 @@ struct SkillOutputExecutableTests {
     #expect(!FileManager.default.fileExists(atPath: journal.path))
   }
 
-  private func changeSelection(_ fixture: CLIFixture, edit: (inout [String: Any]) -> Void) throws {
-    var declaration = try fixture.declaration()
-    var skills = try #require(declaration["skills"] as? [String: [String: Any]])
-    let alias = try #require(skills.keys.first)
-    var selection = try #require(skills[alias])
-    edit(&selection)
-    skills[alias] = selection
-    declaration["skills"] = skills
-    try JSONSerialization.data(withJSONObject: declaration).write(to: fixture.state("agents.json"))
-  }
 }

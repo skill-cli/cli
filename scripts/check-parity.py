@@ -3,12 +3,13 @@
 
 import argparse
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
 
 PACKAGE = Path(__file__).resolve().parents[1]
-STATE_FILES = ("agents.json", "agents.resolved", "agents.watch")
+STATE_FILES = ("Agents.swift", "agents.resolved", "agents.watch")
 
 
 def execute(command, directory, environment=None):
@@ -32,7 +33,9 @@ def environment(root):
         "HOME": str(root / "home"), "TMPDIR": str(root / "tmp"),
         "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "LC_ALL": "C", "TERM": "dumb",
         "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
-        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_COUNT": "2",
+        "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG_VALUE_0": "0",
+        "GIT_CONFIG_KEY_1": "maintenance.auto", "GIT_CONFIG_VALUE_1": "false",
     }
 
 
@@ -231,13 +234,164 @@ def scenario(root, scope, mode, skill_command, agents_command):
           flush=True)
 
 
+def shared_state(root, scope, mode, skill_command, agents_command):
+    env = environment(root)
+    project = root / "project"
+    source = root / "source"
+    source.mkdir()
+    state = root / ("home/.agents" if scope == "user" else "project/.agent")
+    target = root / ("home/.codex/AGENTS.md" if scope == "user" else "project/AGENTS.md")
+
+    def git(*args):
+        return run(["/usr/bin/git", *args], source, env).strip()
+
+    def commit():
+        git("add", ".")
+        git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+            "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+            "commit", "-m", "fixture")
+
+    def call(client, *args):
+        result = execute([*client, *args, "--scope", scope], project, env)
+        assert result.returncode == 0, (args, result.returncode, result.stderr)
+        return result.stdout
+
+    git("init", "--initial-branch=main")
+    rules(source, "Original instructions")
+    skill(source, "demo", "Original skill")
+    commit()
+    call(agents_command, "instructions", "add", str(source), "rules", "--agent", "codex",
+         "--branch", "main")
+    call(agents_command, "skills", "add", str(source), "demo", "--agent", "codex",
+         "--mode", mode, "--branch", "main")
+    call(agents_command, "watch", "add", str(source))
+    manifest = state / "Agents.swift"
+    text = manifest.read_text()
+    text = text.replace("let agents =", "// Keep this instruction context\nlet agents =")
+    text = text.replace(".instructions(", "/* Preserve instruction selection */ .instructions(")
+    assert "/* Preserve instruction selection */" in text
+    manifest.write_text(text)
+
+    def instruction_declaration():
+        declaration = json.loads(call(agents_command, "manifest", "dump", "--json"))["declaration"]
+        components = [item for item in declaration["components"] if item["kind"] == "instructions"]
+        sources = {section["source"] for item in components for section in item["sections"]}
+        return components, [item for item in declaration["sources"] if item["name"] in sources]
+
+    instruction_meaning = instruction_declaration()
+    assert instruction_meaning[0] and instruction_meaning[1]
+    instruction_list = json.loads(call(agents_command, "instructions", "list", "--json"))
+    assert instruction_list["sections"] and instruction_list["targets"]
+    lock = json.loads((state / "agents.resolved").read_text())["instructions"]
+    assert lock["sections"] and lock["targets"]
+    deployed = target.read_bytes()
+    assert b"Original instructions" in deployed
+    watch_before = (state / "agents.watch").read_bytes()
+    skill_before = json.loads(call(skill_command, "list", "--json"))
+    skill_lock_before = json.loads((state / "agents.resolved").read_text())["skills"]
+    assert len(skill_before["skills"]) == 1
+
+    def preserved():
+        declaration = manifest.read_text()
+        assert "// Keep this instruction context" in declaration
+        assert "/* Preserve instruction selection */" in declaration
+        assert instruction_declaration() == instruction_meaning
+        assert json.loads(call(agents_command, "instructions", "list", "--json")) == instruction_list
+        assert json.loads((state / "agents.resolved").read_text())["instructions"] == lock
+        assert target.read_bytes() == deployed
+
+    skill(source, "demo", "Updated skill")
+    commit()
+    call(skill_command, "update", "demo", "--apply")
+    updated = json.loads(call(skill_command, "list", "--json"))
+    assert json.loads((state / "agents.resolved").read_text())["skills"] != skill_lock_before
+    skill_target = Path(updated["skills"][0]["path"]) / "SKILL.md"
+    assert "Updated skill" in skill_target.read_text()
+    preserved()
+    call(skill_command, "watch", "seen", str(source))
+    assert (state / "agents.watch").read_bytes() != watch_before
+    preserved()
+    call(skill_command, "remove", "demo")
+    assert not json.loads(call(skill_command, "list", "--json"))["skills"]
+    assert not skill_target.exists()
+    preserved()
+    target.unlink()
+    call(agents_command, "install")
+    assert target.read_bytes() == deployed
+    preserved()
+    print(f"PASS {scope}/{mode}: alternating clients preserve actual instruction state", flush=True)
+
+
+def diagnostic_parity(root, scope, skill_command, agents_command):
+    roots = [root / "skill", root / "agents"]
+    envs = [environment(client) for client in roots]
+    states = [client / ("home/.agents" if scope == "user" else "project/.agent")
+              for client in roots]
+    source = root / "source"
+    source.mkdir()
+    skill(source, "demo", "Original skill")
+    run(["/usr/bin/git", "init", "--initial-branch=main"], source, envs[0])
+    run(["/usr/bin/git", "add", "."], source, envs[0])
+    run(["/usr/bin/git", "-c", "user.name=Fixture", "-c",
+         "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c",
+         "core.hooksPath=/dev/null", "commit", "-m", "fixture"], source, envs[0])
+    for index, client in enumerate((skill_command, agents_command)):
+        prefix = ["skills"] if index == 1 else []
+        for arguments in ([*prefix, "add", str(source), "demo", "--agent", "codex"],
+                          ["watch", "add", str(source)]):
+            result = execute([*client, *arguments, "--scope", scope],
+                             roots[index] / "project", envs[index])
+            assert result.returncode == 0, (arguments, result.stderr)
+
+    def snapshot(client):
+        return {str(path.relative_to(client)): ("link", str(path.readlink())) if path.is_symlink()
+                else ("file", path.read_bytes()) for base in (client / "home", client / "project")
+                for path in base.rglob("*") if path.is_file() or path.is_symlink()}
+
+    malformed = [
+        ("let agents = Agents()\n", "manifest.version.missing", False),
+        ("// agents-tools-version: 1.0\nimport AgentsDescription\n"
+         "let value: [String: Int] = [\"a\": 1, \"a\": 2]\nlet agents = Agents()\n",
+         "manifest.dictionary.duplicateKey", True),
+    ]
+    commands = [(["list", "--json"], True), (["update", "--apply"], True),
+                (["watch", "--json"], False), (["watch", "add", "missing"], False)]
+    for source, code, related in malformed:
+        for state in states:
+            state.mkdir(parents=True, exist_ok=True)
+            (state / "Agents.swift").write_text(source)
+        for arguments, skills in commands:
+            results = []
+            for index, client in enumerate((skill_command, agents_command)):
+                before = snapshot(roots[index])
+                prefix = ["skills"] if index == 1 and skills else []
+                result = execute([*client, *prefix, *arguments, "--scope", scope],
+                                 roots[index] / "project", envs[index])
+                assert result.returncode == 1 and not result.stdout, (arguments, result.stderr)
+                error = result.stderr.replace(str(roots[index]), "/client")
+                error = error.replace("agents skills", "skill").replace("agents watch", "skill watch")
+                assert re.search(r"Agents\.swift:\d+:\d+: error \[" + re.escape(code) + r"\]:", error), error
+                assert "Fix the reported Agents.swift diagnostics and retry." in error, error
+                if related:
+                    assert re.search(r"Agents\.swift:\d+:\d+: related location", error), error
+                after = snapshot(roots[index])
+                assert before == after, (arguments, before, after)
+                results.append(error)
+            assert results[0] == results[1], (arguments, results)
+    print(f"PASS {scope}: malformed manifest diagnostics match", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--agents-package", type=Path, required=True)
+    parser.add_argument("--agents-revision", required=True,
+                        help="Reviewed full commit SHA of the agents candidate")
     parser.add_argument("--skill", type=Path, default=PACKAGE / ".build/debug/skill")
     args = parser.parse_args()
     reference = args.agents_package.expanduser().resolve()
-    revision = run(["git", "rev-parse", "HEAD"], reference).strip()
+    revision = run(["git", "rev-parse", args.agents_revision + "^{commit}"], reference).strip()
+    if revision != args.agents_revision:
+        parser.error("--agents-revision must be a full commit SHA")
     reference_root = PACKAGE / ".build/agents"
     source = reference_root / "source"
     if source.exists():
@@ -265,6 +419,8 @@ def main():
         for scope in ("project", "user"):
             for mode in ("link", "copy"):
                 scenario(root / f"{scope}-{mode}", scope, mode, skill_command, agents)
+                shared_state(root / f"shared-{scope}-{mode}", scope, mode, skill_command, agents)
+            diagnostic_parity(root / f"diagnostic-{scope}", scope, skill_command, agents)
     finally:
         shutil.rmtree(root)
     print("PASS watch help for the group and all five subcommands")
