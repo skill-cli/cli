@@ -40,7 +40,7 @@ struct SourceSelectorTests {
     ])
     #expect(result.status == 1)
     #expect(result.stderr.contains("different requirements"))
-    #expect(!FileManager.default.fileExists(atPath: fixture.state("Agents.swift").path))
+    #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.yaml").path))
   }
 
   @Test func sourcesSharingALastComponentGetDistinctAliases() throws {

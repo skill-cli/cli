@@ -76,7 +76,7 @@ enum Terminal {
     let action: String
     switch error {
     case is ManifestFailure:
-      action = "fix the reported Agents.swift diagnostics and retry"
+      action = "fix the reported agents.yaml diagnostics and retry"
     case CoreError.transactionRecovered:
       action = "retry the command after other writers finish"
     case CoreError.recoveryPending(let message)
@@ -86,7 +86,7 @@ enum Terminal {
       action =
         "run 'skill install' in the same scope (add --scope user for user state) to finish recovery"
     case CoreError.missingDeclaration:
-      action = "restore Agents.swift from version control before retrying"
+      action = "restore agents.yaml from version control before retrying"
     case CoreError.notFound(let message) where message.hasPrefix("source is not subscribed:"):
       action = "run 'skill watch' to list subscriptions"
     case CoreError.invalidSource("expected a local path or repository URL")
@@ -110,7 +110,7 @@ enum Terminal {
     case CoreError.invalidSkill:
       action = "check SKILL.md and existing installations with 'skill doctor'"
     case CoreError.invalidState:
-      action = "check the scope's Agents.swift, agents.resolved, and recovery journal"
+      action = "check the scope's agents.yaml, agents.resolved, and recovery journal"
     case CoreError.commandFailed:
       action = "check the command arguments and filesystem permissions"
     default:

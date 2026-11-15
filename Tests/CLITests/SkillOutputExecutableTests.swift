@@ -1,4 +1,4 @@
-import AgentsDescription
+import AgentsCore
 import Foundation
 import Testing
 
@@ -61,10 +61,11 @@ struct SkillOutputExecutableTests {
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
     let revision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
-    for (mode, value): (String, AgentsDescription.InstallMode) in [
+    for (mode, value): (String, AgentsCore.InstallMode) in [
       ("copy", .copy), ("edit", .edit), ("link", .link),
     ] {
-      try fixture.replaceSkill(.skills(source: "source", select: ["pdf"], mode: value))
+      try fixture.replaceSkill(
+        .skills(source: "source", SkillDeclaration(select: .names(["pdf"]), mode: value)))
       let output = try fixture.success(["update", "--apply"]).stdout
       let old = mode == "copy" ? "link" : mode == "edit" ? "copy" : "edit"
       #expect(output.contains("  ~ changed  codex (\(old) -> \(mode))  .agents/skills/pdf\n"))
@@ -104,7 +105,8 @@ struct SkillOutputExecutableTests {
     try fixture.commit()
     try fixture.success(["add", fixture.source.path, "pdf"])
     let revision = try fixture.git(["rev-parse", "HEAD"]).stdout.prefix(7)
-    try fixture.replaceSkill(.skills(source: "source", select: ["pdf"], agents: [.codex]))
+    try fixture.replaceSkill(
+      .skills(source: "source", SkillDeclaration(select: .names(["pdf"]), agents: [.codex])))
     let partial = try fixture.success(["update", "--apply"]).stdout
     #expect(partial.contains("--- a/pdf/SKILL.md\n+++ /dev/null\n"))
     #expect(!partial.contains("link pdf:"))

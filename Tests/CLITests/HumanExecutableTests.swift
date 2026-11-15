@@ -1,4 +1,4 @@
-import AgentsDescription
+import AgentsCore
 import Foundation
 import Testing
 
@@ -59,7 +59,13 @@ struct HumanExecutableTests {
   @Test func missingGitSourceHasConciseFailureAndRemedy() throws {
     let fixture = try CLIFixture()
     let source = "file://localhost" + fixture.home.appendingPathComponent("missing.git").path
-    try fixture.editManifest { _ in [.upsertSource(.source(name: "missing", url: source))] }
+    try fixture.editManifest { _ in
+      [
+        .upsertSource(
+          NamedSourceDeclaration(
+            name: "missing", source: SourceDeclaration(kind: .git, location: source)))
+      ]
+    }
     let failure = try fixture.run(["add", "missing", "--all"])
     #expect(failure.status == 1 && failure.stdout.isEmpty)
     #expect(failure.stderr.hasPrefix("Error: Git could not clone \(source).\n"))
@@ -122,7 +128,9 @@ struct HumanExecutableTests {
       "add", fixture.source.path, "pdf", "--mode", "edit", "--agent", "codex",
     ])
     try fixture.replaceSkill(
-      .skills(source: "source", select: ["pdf"], mode: .edit, agents: [.cursor]))
+      .skills(
+        source: "source", SkillDeclaration(select: .names(["pdf"]), agents: [.cursor], mode: .edit))
+    )
     let preview = try fixture.success(["update"]).stdout
     #expect(preview.hasPrefix("~ changed  pdf  "))
   }

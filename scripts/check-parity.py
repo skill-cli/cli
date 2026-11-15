@@ -9,7 +9,7 @@ import shutil
 import subprocess
 
 PACKAGE = Path(__file__).resolve().parents[1]
-STATE_FILES = ("Agents.swift", "agents.resolved", "agents.watch")
+STATE_FILES = ("agents.yaml", "agents.resolved", "agents.watch")
 
 
 def execute(command, directory, environment=None):
@@ -265,15 +265,20 @@ def shared_state(root, scope, mode, skill_command, agents_command):
     call(agents_command, "skills", "add", str(source), "demo", "--agent", "codex",
          "--mode", mode, "--branch", "main")
     call(agents_command, "watch", "add", str(source))
-    manifest = state / "Agents.swift"
+    manifest = state / "agents.yaml"
     text = manifest.read_text()
-    text = text.replace("let agents =", "// Keep this instruction context\nlet agents =")
-    text = text.replace(".instructions(", "/* Preserve instruction selection */ .instructions(")
-    assert "/* Preserve instruction selection */" in text
+    text = "# Keep this instruction context\n" + text
+    text = "\n".join(line + " # Preserve instruction selection"
+                     if "kind" in line and "instructions" in line else line
+                     for line in text.split("\n"))
+    assert "# Preserve instruction selection" in text
     manifest.write_text(text)
 
     def instruction_declaration():
-        declaration = json.loads(call(agents_command, "manifest", "dump", "--json"))["declaration"]
+        report = json.loads(call(agents_command, "manifest", "dump", "--json"))
+        assert (report["schemaVersion"], report["kind"], report["format"],
+                report["manifestVersion"]) == (2, "manifest", "yaml", 1), report
+        declaration = report["declaration"]
         components = [item for item in declaration["components"] if item["kind"] == "instructions"]
         sources = {section["source"] for item in components for section in item["sections"]}
         return components, [item for item in declaration["sources"] if item["name"] in sources]
@@ -293,8 +298,8 @@ def shared_state(root, scope, mode, skill_command, agents_command):
 
     def preserved():
         declaration = manifest.read_text()
-        assert "// Keep this instruction context" in declaration
-        assert "/* Preserve instruction selection */" in declaration
+        assert "# Keep this instruction context" in declaration
+        assert "# Preserve instruction selection" in declaration
         assert instruction_declaration() == instruction_meaning
         assert json.loads(call(agents_command, "instructions", "list", "--json")) == instruction_list
         assert json.loads((state / "agents.resolved").read_text())["instructions"] == lock
@@ -349,17 +354,18 @@ def diagnostic_parity(root, scope, skill_command, agents_command):
                 for path in base.rglob("*") if path.is_file() or path.is_symlink()}
 
     malformed = [
-        ("let agents = Agents()\n", "manifest.version.missing", False),
-        ("// agents-tools-version: 1.0\nimport AgentsDescription\n"
-         "let value: [String: Int] = [\"a\": 1, \"a\": 2]\nlet agents = Agents()\n",
-         "manifest.dictionary.duplicateKey", True),
+        "components: []\n",
+        "version: 2\n",
+        "version: 1\nunexpectedField: true\n",
+        "version: 1\ncomponents: [\n",
+        "version: 1\ndefaultAgents: [codex]\ndefaultAgents: [cursor]\n",
     ]
     commands = [(["list", "--json"], True), (["update", "--apply"], True),
                 (["watch", "--json"], False), (["watch", "add", "missing"], False)]
-    for source, code, related in malformed:
+    for source in malformed:
         for state in states:
             state.mkdir(parents=True, exist_ok=True)
-            (state / "Agents.swift").write_text(source)
+            (state / "agents.yaml").write_text(source)
         for arguments, skills in commands:
             results = []
             for index, client in enumerate((skill_command, agents_command)):
@@ -370,15 +376,31 @@ def diagnostic_parity(root, scope, skill_command, agents_command):
                 assert result.returncode == 1 and not result.stdout, (arguments, result.stderr)
                 error = result.stderr.replace(str(roots[index]), "/client")
                 error = error.replace("agents skills", "skill").replace("agents watch", "skill watch")
-                assert re.search(r"Agents\.swift:\d+:\d+: error \[" + re.escape(code) + r"\]:", error), error
-                assert "Fix the reported Agents.swift diagnostics and retry." in error, error
-                if related:
-                    assert re.search(r"Agents\.swift:\d+:\d+: related location", error), error
+                assert re.search(r"agents\.yaml:\d+:\d+: error \[manifest\.[A-Za-z0-9_.]+\]:", error), error
+                assert "Fix the reported agents.yaml diagnostics and retry." in error, error
                 after = snapshot(roots[index])
                 assert before == after, (arguments, before, after)
                 results.append(error)
             assert results[0] == results[1], (arguments, results)
-    print(f"PASS {scope}: malformed manifest diagnostics match", flush=True)
+    for state in states:
+        (state / "agents.yaml").write_text(
+            "version: 1\ncomponents:\n  - {kind: instructions, sections: []}\n"
+            "  - {kind: instructions, sections: []}\n")
+    for arguments in (["list", "--json"], ["update", "--json"]):
+        errors = []
+        for index, client in enumerate((skill_command, agents_command)):
+            before = snapshot(roots[index])
+            prefix = ["skills"] if index == 1 else []
+            result = execute([*client, *prefix, *arguments, "--scope", scope],
+                             roots[index] / "project", envs[index])
+            assert result.returncode == 1 and not result.stdout, (arguments, result.stderr)
+            error = result.stderr.replace(str(roots[index]), "/client")
+            assert "agents.yaml:3:5: error [manifest.ambiguous]:" in error, error
+            assert "agents.yaml:4:5: related location" in error, error
+            assert snapshot(roots[index]) == before
+            errors.append(error)
+        assert errors[0] == errors[1], (arguments, errors)
+    print(f"PASS {scope}: malformed and related manifest diagnostics match", flush=True)
 
 
 def main():

@@ -32,7 +32,7 @@ struct ExecutableTests {
     #expect(humanList.contains(displayPath))
     #expect(!humanList.contains(installed.path))
     let lock = try Data(contentsOf: fixture.state("agents.resolved", scope: scope))
-    let declaration = try Data(contentsOf: fixture.state("Agents.swift", scope: scope))
+    let declaration = try Data(contentsOf: fixture.state("agents.yaml", scope: scope))
     try FileManager.default.removeItem(at: installed)
     let missing = try fixture.success(["doctor", "--json"] + scopeArguments).json()
     let roots = try #require(missing["roots"] as? [[String: Any]])
@@ -74,7 +74,7 @@ struct ExecutableTests {
     #expect(Data(base64Encoded: try #require(before["base64"] as? String)) == original)
     #expect(try Data(contentsOf: file) == original)
     #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
-    #expect(try Data(contentsOf: fixture.state("Agents.swift", scope: scope)) == declaration)
+    #expect(try Data(contentsOf: fixture.state("agents.yaml", scope: scope)) == declaration)
     let applied = try fixture.success(["update", "--apply"] + scopeArguments)
     let diffIndex = try #require(applied.stdout.range(of: "+Updated upstream content")?.lowerBound)
     let appliedIndex = try #require(
@@ -98,7 +98,7 @@ struct ExecutableTests {
     let available = try fixture.success(["add", fixture.source.path])
     #expect(available.stdout.contains("one") && available.stdout.contains("two"))
     #expect(available.stdout.contains("--all"))
-    #expect(!FileManager.default.fileExists(atPath: fixture.state("Agents.swift").path))
+    #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.yaml").path))
     let list = try fixture.success([
       "list", fixture.source.path, "--full-depth", "--path", "skills", "--json",
     ]).json()
@@ -160,7 +160,7 @@ struct ExecutableTests {
       #expect(root["scope"] as? String == "project")
       #expect((root["checks"] as? [Any])?.isEmpty == true)
     }
-    #expect(!FileManager.default.fileExists(atPath: fixture.state("Agents.swift").path))
+    #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.yaml").path))
     #expect(
       !FileManager.default.fileExists(atPath: fixture.project.appendingPathComponent(".agent").path)
     )
@@ -201,7 +201,7 @@ struct ExecutableTests {
     let cache = fixture.state("cache/content", scope: scope)
     try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
     let files = [
-      fixture.state(journal, scope: scope), fixture.state("Agents.swift", scope: scope),
+      fixture.state(journal, scope: scope), fixture.state("agents.yaml", scope: scope),
       fixture.state("agents.resolved", scope: scope), cache.appendingPathComponent("snapshot"),
     ]
     for (file, content) in zip(

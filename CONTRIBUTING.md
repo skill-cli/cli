@@ -85,7 +85,8 @@ links, executable-mode changes, removals, and multiline Git diagnostics.
 - Port shared command changes from agents-tools/cli, keeping the layout parallel.
 - Change reusable behavior and its tests in agents-tools/core. The command target
   calls `SkillOperations` and uses `AgentsManifest` value types to display
-  diagnostics; declaration fixtures also use `AgentsDescription`.
+  diagnostics; declaration fixtures pass `AgentsCore` domain values through
+  the manifest document editor.
 - Keep instruction state and target files untouched by skill commands.
 - Update the CLI reference, schemas, companion skill, and architecture when
   their contracts change. Keep historical records in their owning directories.

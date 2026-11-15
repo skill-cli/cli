@@ -100,12 +100,12 @@ skill init my-skill
 skill doctor --root /path/to/project-a /path/to/project-b --json
 ```
 
-Project scope uses the current directory and stores `Agents.swift`,
+Project scope uses the current directory and stores `agents.yaml`,
 `agents.resolved`, `agents.watch`, and `cache/` under `.agent/`. `--scope user`
-uses `~/.agents/`. Commit the project's `Agents.swift` declaration and
+uses `~/.agents/`. Commit the project's `agents.yaml` declaration and
 `agents.resolved` lock; keep `agents.watch` and caches out of version control.
-Core statically parses `Agents.swift` without executing Swift. Skill changes
-preserve unrelated declaration comments, ordering, and instruction state.
+Core validates the YAML declaration; `agents.resolved` is tool-owned JSON.
+Skill changes preserve unrelated declaration comments, ordering, and instruction state.
 
 `add` installs in `link` mode for the recipients already recorded for that skill
 or source, otherwise for the declaration's default agents (initially Codex and

@@ -10,5 +10,5 @@ DerivedData/
 .netrc
 /.agent/*
 !/.agent/instructions/
-!/.agent/agents.json
+!/.agent/agents.yaml
 !/.agent/agents.resolved

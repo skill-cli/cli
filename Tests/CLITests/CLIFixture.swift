@@ -1,5 +1,4 @@
 import AgentsCore
-import AgentsDescription
 import AgentsManifest
 import Foundation
 import Testing
@@ -121,7 +120,7 @@ final class CLIFixture {
   }
 
   func writeManifest(_ text: String, scope: String = "project") throws {
-    let url = state("Agents.swift", scope: scope)
+    let url = state("agents.yaml", scope: scope)
     let bytes = Array(text.utf8)
     _ = try DeclarationDocument(bytes: bytes, identity: DocumentIdentity(url.path))
     try FileManager.default.createDirectory(
@@ -132,17 +131,17 @@ final class CLIFixture {
   func editManifest(
     scope: String = "project", _ edits: (DeclarationDocument) throws -> [ManifestEdit]
   ) throws {
-    if !FileManager.default.fileExists(atPath: state("Agents.swift", scope: scope).path) {
+    if !FileManager.default.fileExists(atPath: state("agents.yaml", scope: scope).path) {
       try writeManifest(
-        "// agents-tools-version: 1.0\nimport AgentsDescription\n\nlet agents = Agents()\n",
+        "version: 1\n",
         scope: scope)
     }
     let document = try #require(try store(scope: scope).loadManifest())
     let change = try document.preparing(edits(document))
-    try Data(change.bytes).write(to: state("Agents.swift", scope: scope))
+    try Data(change.bytes).write(to: state("agents.yaml", scope: scope))
   }
 
-  func replaceSkill(_ component: Component) throws {
+  func replaceSkill(_ component: ComponentDeclaration) throws {
     try editManifest { document in
       [.replaceComponent(try #require(document.node(at: "/components/0")), with: component)]
     }

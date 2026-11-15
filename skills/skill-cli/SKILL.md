@@ -14,13 +14,13 @@ These instructions describe the command surface in this repository.
 
 Project scope is the default and uses the current directory. Change directory
 to the intended project before running commands. Use `--scope user` for HOME's
-shared state. Declaration and lock files are `Agents.swift` and `agents.resolved`
+shared state. Declaration and lock files are `agents.yaml` and `agents.resolved`
 in project `.agent/` or user `~/.agents/`; core owns their validation and writes.
-Core statically parses `Agents.swift` without executing Swift. Skill operations
+Core validates the YAML declaration; the lock is tool-owned JSON. Skill operations
 preserve unrelated declaration comments and ordering. Instruction declarations,
-locked records, and target files stay untouched. Restore a missing `Agents.swift`
+locked records, and target files stay untouched. Restore a missing `agents.yaml`
 from version control when the scope already has lock or watch state.
-Watch subscriptions in `Agents.swift` and baselines in `agents.watch` are shared
+Watch subscriptions in `agents.yaml` and baselines in `agents.watch` are shared
 with `agents watch`; reports include skills, instruction units, and artifacts.
 
 For add, repeat `--agent` to choose recipients, for example

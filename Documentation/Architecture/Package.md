@@ -14,8 +14,8 @@ skill (executable product)
       ├─> AgentsManifest (diagnostic value types)
       └─> AgentsSkills ──> AgentsCore
   CLITests ──> CLI
-           ├─> AgentsManifest
-           └─> AgentsDescription
+           ├─> AgentsCore
+           └─> AgentsManifest
 ```
 
 `Package.swift` owns the graph and the core revision used during development;
@@ -30,9 +30,9 @@ watch subscriptions. `SkillOperations.watchOperations()` supplies skill discover
 and artifact loading to core; watch also reports instruction units without
 rendering or installing them.
 `AgentsSkills` owns skill behavior and uses `AgentsManifest` for static declaration
-parsing and byte-preserving edits. `AgentsDescription` owns its typed vocabulary.
-Tests use those modules directly to prepare declaration fixtures. `AgentsCore`
-owns source identity,
+parsing and byte-preserving edits of `agents.yaml`. Tests use the document
+editor with `AgentsCore` domain payloads to prepare declaration fixtures.
+`AgentsCore` owns source identity,
 requirements, cache, declaration, resolved state, transactions, recovery, and
 agent locations. Instruction declarations, locked records, and target files
 remain owned by instruction operations and are preserved by skill operations.
@@ -82,8 +82,9 @@ installation roots for update previews and completion; no separate inventory
 read is needed. JSON retains exact snapshots and absolute paths.
 `install` uses exact locked pins and recipients.
 
-Project state is `.agent/Agents.swift`, `.agent/agents.resolved`, and
+Project state is `.agent/agents.yaml`, `.agent/agents.resolved`, and
 `.agent/agents.watch`; user state uses the same filenames under `~/.agents/`.
+The declaration is YAML; `agents.resolved` remains tool-owned JSON.
 Each scope has a `cache/` directory. Subscriptions live in the declaration;
 watch baselines live in `agents.watch`. Both CLIs share these formats.
 Watch mutations return core-owned confirmation identities. Status and diff may
@@ -94,7 +95,7 @@ installation paths, locking, transaction journals, and pruning. Read commands
 may populate caches, while doctor only inspects existing state. Mutating
 commands recover a consistent generation and retry once with a stderr notice.
 Doctor reports pending recovery as an error without changing state. See core's
-[state architecture](https://github.com/agents-tools/core/blob/master/Documentation/Architecture/State.md)
+[state architecture](https://github.com/agents-tools/core/blob/bb5c1db909de58a2a4516e45a5b62b662700a14a/Documentation/Architecture/State.md)
 for those invariants and [CLI reference](../Reference/CLI.md) for the command contract.
 
 ## Validation and Supporting Artifacts
