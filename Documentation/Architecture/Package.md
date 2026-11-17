@@ -12,14 +12,17 @@ skill (executable product)
   CLI ──> ArgumentParser
       ├─> AgentsCore
       ├─> AgentsManifest (diagnostic value types)
-      └─> AgentsSkills ──> AgentsCore
+      ├─> AgentsSkills ──> AgentsCore
+      └─> AgentsUpdates (SkillOperations lifecycle extensions)
   CLITests ──> CLI
            ├─> AgentsCore
-           └─> AgentsManifest
+           ├─> AgentsManifest
+           ├─> AgentsInstructions (fixture setup)
+           └─> AgentsUpdates (fixture setup)
 ```
 
 `Package.swift` owns the graph and the core revision used during development;
-[release preparation](../Reference/Release.md) selects a published version range. This repository has no library target. It does not depend on
+[release preparation](../Reference/Release.md) selects a published version range. This repository has no library target. The CLI target does not directly depend on
 `AgentsInstructions` or on the `agents` CLI package.
 
 The CLI owns argument validation, help, version output, JSON report schemas,
@@ -29,8 +32,11 @@ for discovery, add, list, update, restore, removal, initialization, doctor, and
 watch subscriptions. `SkillOperations.watchOperations()` supplies skill discovery
 and artifact loading to core; watch also reports instruction units without
 rendering or installing them.
-`AgentsSkills` owns skill behavior and uses `AgentsManifest` for static declaration
-parsing and byte-preserving edits of `agents.yaml`. Tests use the document
+`AgentsSkills` owns skill discovery, inspection, snapshots, and initialization. `AgentsUpdates`
+provides the public `SkillOperations` extensions for add, remove, restore, and
+update, coordinating declaration edits and installation transactions through core.
+`AgentsManifest` owns static declaration parsing and byte-preserving edits of
+`agents.yaml`. Tests use the document
 editor with `AgentsCore` domain payloads to prepare declaration fixtures.
 `AgentsCore` owns source identity,
 requirements, cache, declaration, resolved state, transactions, recovery, and

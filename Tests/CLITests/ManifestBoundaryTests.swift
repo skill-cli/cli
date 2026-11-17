@@ -44,7 +44,7 @@ struct ManifestBoundaryTests {
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let bytes =
       try orphan == "agents.resolved"
-      ? JSONEncoder().encode(ResolvedState()) : JSONEncoder().encode(WatchState())
+      ? JSONEncoder().encode(ResolvedLedger()) : JSONEncoder().encode(WatchState())
     try bytes.write(to: fixture.state(orphan, scope: scope))
     for command in [
       ["list", "--json"], ["update", "--json"], ["install"],
@@ -130,25 +130,22 @@ struct ManifestBoundaryTests {
   }
 
   @Test(arguments: ["project", "user"])
-  func ambiguousDeploymentIncludesRelatedLocations(_ scope: String) throws {
+  func ambiguousSkillSelectionRejectsMutation(_ scope: String) throws {
     let fixture = try CLIFixture()
-    try fixture.writeManifest(
-      """
-      version: 1
-      components:
-        - {kind: instructions, sections: []}
-        - {kind: instructions, sections: []}
-
-      """, scope: scope)
+    try fixture.skill()
+    try fixture.commit()
+    try fixture.success(["add", fixture.source.path, "demo", "--scope", scope])
     let url = fixture.state("agents.yaml", scope: scope)
+    let text = try String(contentsOf: url, encoding: .utf8)
+    let component = try #require(
+      text.split(separator: "\n").first { $0.contains("kind") && $0.contains("skills") })
+    try fixture.writeManifest(text + String(component) + "\n", scope: scope)
     let before = try Data(contentsOf: url)
-    for command in [["list", "--json"], ["update", "--json"]] {
-      let result = try fixture.run(command + ["--scope", scope])
-      #expect(result.status == 1 && result.stdout.isEmpty)
-      #expect(result.stderr.contains("agents.yaml:3:5: error [manifest.ambiguous]:"))
-      #expect(result.stderr.contains("agents.yaml:4:5: related location"))
-      #expect(result.stderr.hasSuffix("\n  Fix the reported agents.yaml diagnostics and retry.\n"))
-      #expect(try Data(contentsOf: url) == before)
-    }
+    let lock = try Data(contentsOf: fixture.state("agents.resolved", scope: scope))
+    let result = try fixture.run(["add", fixture.source.path, "demo", "--scope", scope])
+    #expect(result.status == 1 && result.stdout.isEmpty)
+    #expect(result.stderr.contains("skill selection is ambiguous"))
+    #expect(try Data(contentsOf: url) == before)
+    #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
   }
 }

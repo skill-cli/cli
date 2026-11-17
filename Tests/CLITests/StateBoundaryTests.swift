@@ -1,19 +1,16 @@
 import AgentsCore
+import AgentsInstructions
 import AgentsManifest
+import AgentsUpdates
 import Foundation
 import Testing
-
-#if canImport(CryptoKit)
-  import CryptoKit
-#else
-  import Crypto
-#endif
 
 struct StateBoundaryTests {
   @Test(arguments: [InstallScope.project, .user])
   func lifecyclePreservesInstructions(_ scope: InstallScope) throws {
     let fixture = try CLIFixture()
     try fixture.skill()
+    try fixture.instruction("rules")
     try fixture.commit()
     let scopeArguments = ["--scope", scope.rawValue]
     try fixture.success(["add", fixture.source.path, "demo", "--mode", "copy"] + scopeArguments)
@@ -34,22 +31,12 @@ struct StateBoundaryTests {
               ])), into: .root, at: .first)
       ]
     }
+    _ = try InstructionOperations.updateInstalled(
+      scope: scope, environment: store.environment, apply: true)
     let declaration = try store.loadDeclaration()
-    var resolved = try store.loadResolved()
+    let resolved = try store.loadResolved()
     let pin = try #require(resolved.skills["demo"])
-    let section = LockedSection(
-      name: "rules", source: pin.source, revision: pin.revision,
-      path: "instructions/rules.md", hash: try #require(pin.hash))
     let targetRoot = scope == .user ? fixture.home : fixture.project
-    let targetKey = scope == .user ? "~/.codex/AGENTS.md" : "AGENTS.md"
-    resolved.instructions = LockedInstructions(
-      sections: [section],
-      chatgpt: ["daily": LockedPrompt(sections: [section], append: "custom.md")],
-      targets: [
-        targetKey: LockedTarget(
-          agents: [.codex], headingOffset: 0, blockHash: section.hash, created: false)
-      ])
-    try JSONEncoder().encode(resolved).write(to: store.resolvedURL)
     try fixture.success(["watch", "add", fixture.source.path] + scopeArguments)
     var watch = try Data(contentsOf: store.watchURL)
     let targetPaths =
@@ -100,9 +87,6 @@ struct StateBoundaryTests {
     let fixture = try CLIFixture()
     try fixture.skill()
     try fixture.commit()
-    func hash(_ bytes: Data) -> String {
-      "sha256:" + SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
-    }
     let body = "# Guide\n\nKeep it small.\n"
     let own = Data("---\ndescription: Repository guide\n---\n\n\(body)".utf8)
     let agentsFile = Data(
@@ -123,36 +107,8 @@ struct StateBoundaryTests {
             - {name: guide}
 
       """.utf8)
-    let resolved = Data(
-      """
-      {
-        "instructions": {
-          "chatgpt": {},
-          "sections": [
-            {
-              "hash": "\(hash(own))",
-              "name": "guide",
-              "path": ".agent/instructions/guide.md",
-              "source": "."
-            }
-          ],
-          "targets": {
-            "AGENTS.md": {
-              "agents": ["claude-code", "codex"],
-              "blockHash": "\(hash(agentsFile))",
-              "created": false,
-              "headingOffset": 0
-            }
-          }
-        },
-        "skills": {},
-        "sources": {},
-        "version": 1
-      }
-
-      """.utf8)
     let files = [
-      ".agent/agents.yaml": declaration, ".agent/agents.resolved": resolved,
+      ".agent/agents.yaml": declaration,
       ".agent/instructions/guide.md": own, "AGENTS.md": agentsFile,
     ]
     for (path, bytes) in files {
@@ -161,17 +117,18 @@ struct StateBoundaryTests {
         at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
       try bytes.write(to: url)
     }
+    let store = fixture.store()
+    _ = try InstructionOperations.updateInstalled(environment: store.environment, apply: true)
+    var expectedFiles = files
+    expectedFiles[".agent/agents.resolved"] = try Data(contentsOf: store.resolvedURL)
+    expectedFiles["AGENTS.md"] = try Data(
+      contentsOf: fixture.project.appendingPathComponent("AGENTS.md"))
     for command in [["list", "--json"], ["doctor", "--json"], ["update", "--json"], ["install"]] {
       try fixture.success(command)
-      for (path, bytes) in files {
+      for (path, bytes) in expectedFiles {
         #expect(try Data(contentsOf: fixture.project.appendingPathComponent(path)) == bytes)
       }
     }
-    let store = StateStore(
-      scope: .project,
-      environment: RuntimeEnvironment(
-        projectDirectory: fixture.project, homeDirectory: fixture.home,
-        environment: fixture.environment))
     let instructions = try store.loadDeclaration().instructions
     let lockedInstructions = try store.loadResolved().instructions
     for command in [["add", fixture.source.path, "demo"], ["remove", "demo"]] {
@@ -186,7 +143,8 @@ struct StateBoundaryTests {
           "- kind: instructions\n    agents: [claude-code, codex]\n    sections:\n      - {name: guide}"
         ))
       for path in [".agent/instructions/guide.md", "AGENTS.md"] {
-        #expect(try Data(contentsOf: fixture.project.appendingPathComponent(path)) == files[path])
+        #expect(
+          try Data(contentsOf: fixture.project.appendingPathComponent(path)) == expectedFiles[path])
       }
     }
   }

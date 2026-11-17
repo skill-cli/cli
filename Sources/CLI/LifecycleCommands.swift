@@ -1,5 +1,6 @@
 import AgentsCore
 import AgentsSkills
+import AgentsUpdates
 import ArgumentParser
 import Foundation
 

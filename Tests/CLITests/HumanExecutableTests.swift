@@ -81,11 +81,11 @@ struct HumanExecutableTests {
     try FileManager.default.removeItem(at: fixture.source.appendingPathComponent(".git"))
     let failure = try fixture.run(["update"])
     #expect(failure.status == 1 && failure.stdout.isEmpty)
-    #expect(failure.stderr.hasPrefix("Error: Git could not fetch \(fixture.source.path).\n"))
-    #expect(failure.stderr.contains("\n  fatal: Could not read from remote repository.\n"))
+    #expect(failure.stderr.hasPrefix("Error: Git could not clone \(fixture.source.path).\n"))
+    #expect(failure.stderr.contains("\n  fatal: repository "))
     #expect(
       failure.stderr.hasSuffix(
-        "  and the repository exists.\n  Check Git access and the source location.\n"))
+        "  Check Git access and the source location.\n"))
     let lines = failure.stderr.split(separator: "\n", omittingEmptySubsequences: false)
     #expect(lines.dropFirst().dropLast().allSatisfy { $0.hasPrefix("  ") })
     #expect(!failure.stderr.contains("cache/") && !failure.stderr.contains("\n  \n"))

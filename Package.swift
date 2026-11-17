@@ -20,6 +20,7 @@ let package = Package(
         .product(name: "AgentsCore", package: "core"),
         .product(name: "AgentsManifest", package: "core"),
         .product(name: "AgentsSkills", package: "core"),
+        .product(name: "AgentsUpdates", package: "core"),
       ]),
     .testTarget(
       name: "CLITests",
@@ -27,6 +28,8 @@ let package = Package(
         "CLI",
         .product(name: "AgentsCore", package: "core"),
         .product(name: "AgentsManifest", package: "core"),
+        .product(name: "AgentsInstructions", package: "core"),
+        .product(name: "AgentsUpdates", package: "core"),
       ]),
   ],
   swiftLanguageModes: [.v6]

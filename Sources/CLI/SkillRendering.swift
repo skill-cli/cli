@@ -194,11 +194,11 @@ struct SkillOutputInventory {
     // Inventory hashes installed content, so unrelated unreadable content can fail
     // it even when a removal succeeds. Locked recipients remain
     // useful for presentation; read them without triggering state recovery.
-    let url = StateStore(scope: scope).resolvedURL
+    let store = StateStore(scope: scope)
+    let url = store.resolvedURL
     guard let metadata = try? url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
       metadata.isRegularFile == true, metadata.isSymbolicLink != true,
-      let data = try? Data(contentsOf: url),
-      let lock = try? JSONDecoder().decode(ResolvedState.self, from: data)
+      let lock = try? store.loadResolved()
     else { return Self() }
     return Self(
       modes: lock.skills.mapValues { skill in

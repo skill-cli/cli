@@ -142,7 +142,7 @@ struct UpdateReportingTests {
     let failed = try fixture.run(["update", "--apply"])
     #expect(failed.status == 1)
     #expect(!failed.stdout.contains("Updated") && !failed.stdout.contains("Added"))
-    #expect(failed.stderr.contains("an entry this scope does not manage already exists there"))
+    #expect(failed.stderr.contains("unmanaged content at \(target.path); move or remove it first"))
     #expect(try Data(contentsOf: fixture.state("agents.yaml")) == declaration)
     #expect(!FileManager.default.fileExists(atPath: fixture.state("agents.resolved").path))
     #expect(try FileManager.default.destinationOfSymbolicLink(atPath: target.path) == destination)
