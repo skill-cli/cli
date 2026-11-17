@@ -95,7 +95,7 @@ installation paths, locking, transaction journals, and pruning. Read commands
 may populate caches, while doctor only inspects existing state. Mutating
 commands recover a consistent generation and retry once with a stderr notice.
 Doctor reports pending recovery as an error without changing state. See core's
-[state architecture](https://github.com/agents-tools/core/blob/bb5c1db909de58a2a4516e45a5b62b662700a14a/Documentation/Architecture/State.md)
+[state architecture](https://github.com/agents-tools/core/blob/25187e040ca0dd98e96c48704a4a7e95d4da198c/Documentation/Architecture/State.md)
 for those invariants and [CLI reference](../Reference/CLI.md) for the command contract.
 
 ## Validation and Supporting Artifacts
