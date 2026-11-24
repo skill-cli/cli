@@ -8,7 +8,7 @@ import Foundation
 #endif
 
 enum BuildInfo {
-  static let version = "0.4.0"
+  static let version = "0.5.0"
 }
 
 struct SkillCLI: ParsableCommand {
