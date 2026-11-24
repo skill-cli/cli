@@ -2,7 +2,7 @@
 
 Release in dependency order: **agents-tools/core → the CLIs → their Homebrew
 taps**. This checklist owns the `skill` executable release. Core owns its
-[release policy](https://github.com/agents-tools/core/blob/7f5d71a8af0ec9861db4ae259f4b0c64d79e2985/Documentation/Reference/Release.md);
+[release policy](https://github.com/agents-tools/core/blob/b01aaa18352e560566d7244a864e5c543e39f322/Documentation/Reference/Release.md);
 the [skill tap](https://github.com/skill-cli/homebrew-tap#readme) owns formula
 maintenance and publication. Tagging, releases, and tap publication require
 maintainer authorization.
