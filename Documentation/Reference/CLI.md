@@ -357,7 +357,7 @@ current directory and user scope uses HOME.
 | Project | `.agent/agents.yaml` | `.agent/agents.resolved` | `.agent/cache/` |
 | User | `~/.agents/agents.yaml` | `~/.agents/agents.resolved` | `~/.agents/cache/` |
 
-`agents.yaml` uses core's [YAML declaration format](https://github.com/agents-tools/core/blob/46c3bf9e158b9501e6267864d4ce57dc21c3058b/Documentation/Reference/Manifest.md).
+`agents.yaml` uses core's [YAML declaration format](https://github.com/agents-tools/core/blob/22e88e969edb1733c7487e845b8755ad26407b3a/Documentation/Reference/Manifest.md).
 The root mapping requires `version: 1`. A declaration can combine skill and
 instruction components:
 
