@@ -1,3 +1,4 @@
+import AgentsCore
 import ArgumentParser
 import Foundation
 
@@ -40,6 +41,7 @@ struct SkillCLI: ParsableCommand {
 @main
 enum EntryPoint {
   static func main() {
+    ProcessLimits.raiseOpenFileLimit()
     var command: any ParsableCommand
     do {
       let arguments = Array(CommandLine.arguments.dropFirst())
