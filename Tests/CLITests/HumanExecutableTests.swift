@@ -1,3 +1,4 @@
+import AgentsCore
 import Foundation
 import Testing
 
@@ -58,12 +59,13 @@ struct HumanExecutableTests {
   @Test func missingGitSourceHasConciseFailureAndRemedy() throws {
     let fixture = try CLIFixture()
     let source = "file://localhost" + fixture.home.appendingPathComponent("missing.git").path
-    try FileManager.default.createDirectory(
-      at: fixture.state("agents.json").deletingLastPathComponent(),
-      withIntermediateDirectories: true)
-    try JSONSerialization.data(withJSONObject: [
-      "sources": ["missing": ["git": source]]
-    ]).write(to: fixture.state("agents.json"))
+    try fixture.editManifest { _ in
+      [
+        .upsertSource(
+          NamedSourceDeclaration(
+            name: "missing", source: SourceDeclaration(kind: .git, location: source)))
+      ]
+    }
     let failure = try fixture.run(["add", "missing", "--all"])
     #expect(failure.status == 1 && failure.stdout.isEmpty)
     #expect(failure.stderr.hasPrefix("Error: Git could not clone \(source).\n"))
@@ -79,11 +81,11 @@ struct HumanExecutableTests {
     try FileManager.default.removeItem(at: fixture.source.appendingPathComponent(".git"))
     let failure = try fixture.run(["update"])
     #expect(failure.status == 1 && failure.stdout.isEmpty)
-    #expect(failure.stderr.hasPrefix("Error: Git could not fetch \(fixture.source.path).\n"))
-    #expect(failure.stderr.contains("\n  fatal: Could not read from remote repository.\n"))
+    #expect(failure.stderr.hasPrefix("Error: Git could not clone \(fixture.source.path).\n"))
+    #expect(failure.stderr.contains("\n  fatal: repository "))
     #expect(
       failure.stderr.hasSuffix(
-        "  and the repository exists.\n  Check Git access and the source location.\n"))
+        "  Check Git access and the source location.\n"))
     let lines = failure.stderr.split(separator: "\n", omittingEmptySubsequences: false)
     #expect(lines.dropFirst().dropLast().allSatisfy { $0.hasPrefix("  ") })
     #expect(!failure.stderr.contains("cache/") && !failure.stderr.contains("\n  \n"))
@@ -125,12 +127,10 @@ struct HumanExecutableTests {
     try fixture.success([
       "add", fixture.source.path, "pdf", "--mode", "edit", "--agent", "codex",
     ])
-    var declaration = try fixture.declaration()
-    var skills = try #require(declaration["skills"] as? [String: [String: Any]])
-    let alias = try #require(skills.keys.first)
-    skills[alias]?["agents"] = ["cursor"]
-    declaration["skills"] = skills
-    try JSONSerialization.data(withJSONObject: declaration).write(to: fixture.state("agents.json"))
+    try fixture.replaceSkill(
+      .skills(
+        source: "source", SkillDeclaration(select: .names(["pdf"]), agents: [.cursor], mode: .edit))
+    )
     let preview = try fixture.success(["update"]).stdout
     #expect(preview.hasPrefix("~ changed  pdf  "))
   }

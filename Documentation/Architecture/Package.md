@@ -1,8 +1,9 @@
 # Package Architecture
 
 `skill-cli` builds the `skill` executable, a skills command layer over
-[agents-tools/core](https://github.com/agents-tools/core). It uses Swift 6.3,
-Swift 6 language mode, and a macOS 15 minimum deployment target.
+[agents-tools/core](https://github.com/agents-tools/core). Source builds support
+macOS and Linux. `Package.swift` owns the Swift language/toolchain and macOS
+deployment minimums; `.github/swift-package.json` pins the CI toolchains.
 
 ## Products and Ownership
 
@@ -10,21 +11,34 @@ Swift 6 language mode, and a macOS 15 minimum deployment target.
 skill (executable product)
   CLI ──> ArgumentParser
       ├─> AgentsCore
-      └─> AgentsSkills ──> AgentsCore
+      ├─> AgentsManifest (diagnostic value types)
+      ├─> AgentsSkills ──> AgentsCore
+      └─> AgentsUpdates (SkillOperations lifecycle extensions)
   CLITests ──> CLI
+           ├─> AgentsCore
+           ├─> AgentsManifest
+           ├─> AgentsInstructions (fixture setup)
+           └─> AgentsUpdates (fixture setup)
 ```
 
 `Package.swift` owns the graph and the core revision used during development;
-[release preparation](../Reference/Release.md) selects a published version range. This repository has no library target. It does not depend on
+[release preparation](../Reference/Release.md) selects a published version range. This repository has no library target. The CLI target does not directly depend on
 `AgentsInstructions` or on the `agents` CLI package.
 
 The CLI owns argument validation, help, version output, JSON report schemas,
-terminal rendering, recovery notices, and exit codes. It calls `SkillOperations`
+terminal rendering, recovery notices, and exit codes. It displays located
+`ManifestFailure` diagnostics using `AgentsManifest` value types and calls `SkillOperations`
 for discovery, add, list, update, restore, removal, initialization, doctor, and
 watch subscriptions. `SkillOperations.watchOperations()` supplies skill discovery
 and artifact loading to core; watch also reports instruction units without
 rendering or installing them.
-`AgentsSkills` owns skill behavior; `AgentsCore` owns source identity,
+`AgentsSkills` owns skill discovery, inspection, snapshots, and initialization. `AgentsUpdates`
+provides the public `SkillOperations` extensions for add, remove, restore, and
+update, coordinating declaration edits and installation transactions through core.
+`AgentsManifest` owns static declaration parsing and byte-preserving edits of
+`agents.yaml`. Tests use the document
+editor with `AgentsCore` domain payloads to prepare declaration fixtures.
+`AgentsCore` owns source identity,
 requirements, cache, declaration, resolved state, transactions, recovery, and
 agent locations. Instruction declarations, locked records, and target files
 remain owned by instruction operations and are preserved by skill operations.
@@ -60,7 +74,8 @@ named update command for both selected and all-skill updates.
 | `Tests/CLITests/ExecutableTests.swift` | Lifecycle, help, output schemas, exits, environment isolation |
 | `Tests/CLITests/WatchParsingTests.swift` | Watch options, requirements, default status, and kind filters |
 | `Tests/CLITests/WatchExecutableTests.swift` | Watch lifecycle, read-only inspection, errors, recovery, and help |
-| `Tests/CLITests/WatchReportTests.swift` | Artifact reports, confirmation identities, and snapshot encoding |
+| `Tests/CLITests/WatchReportTests.swift` | Artifact reports and snapshot encoding |
+| `Tests/CLITests/ManifestBoundaryTests.swift` | Declaration no-ops, comments, missing declaration, and read-only pending recovery |
 | `Tests/CLITests/StateBoundaryTests.swift` | Instruction preservation and state ownership through the executable |
 
 ## Data Flow and State
@@ -73,18 +88,20 @@ installation roots for update previews and completion; no separate inventory
 read is needed. JSON retains exact snapshots and absolute paths.
 `install` uses exact locked pins and recipients.
 
-Project state is `.agent/agents.json`, `.agent/agents.resolved`, and
+Project state is `.agent/agents.yaml`, `.agent/agents.resolved`, and
 `.agent/agents.watch`; user state uses the same filenames under `~/.agents/`.
+The declaration is YAML; `agents.resolved` remains tool-owned JSON.
 Each scope has a `cache/` directory. Subscriptions live in the declaration;
 watch baselines live in `agents.watch`. Both CLIs share these formats.
-Watch status and diff may fetch sources but preserve declarations, locks,
+Watch mutations return core-owned confirmation identities. Status and diff may
+fetch sources but preserve declarations, locks,
 baselines, installations, and source working trees.
 Core owns validation, deterministic encoding, source mirrors, pinned content,
 installation paths, locking, transaction journals, and pruning. Read commands
 may populate caches, while doctor only inspects existing state. Mutating
 commands recover a consistent generation and retry once with a stderr notice.
 Doctor reports pending recovery as an error without changing state. See core's
-[state architecture](https://github.com/agents-tools/core/blob/master/Documentation/Architecture/State.md)
+[state architecture](https://github.com/agents-tools/core/blob/048cbf3f23c8a9986ca3de8654f7ec5f758161ae/Documentation/Architecture/State.md)
 for those invariants and [CLI reference](../Reference/CLI.md) for the command contract.
 
 ## Validation and Supporting Artifacts

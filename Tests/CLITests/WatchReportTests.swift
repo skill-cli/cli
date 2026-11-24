@@ -6,24 +6,6 @@ import Testing
 @testable import CLI
 
 struct WatchReportTests {
-  @Test func confirmationUsesSubscribedAliasThenSubscribedIdentity() throws {
-    let fixture = try CLIFixture()
-    let environment = RuntimeEnvironment(
-      projectDirectory: fixture.project, homeDirectory: fixture.home,
-      environment: fixture.environment)
-    let id = "example.invalid/rules"
-    var declaration = Declaration(
-      sources: [
-        id: SourceDeclaration(kind: .local, location: fixture.source.path),
-        "remote": SourceDeclaration(kind: .git, location: "https://example.invalid/rules.git"),
-      ], watch: ["remote"])
-    #expect(try watchedSourceID(id, declaration: declaration, environment: environment) == id)
-    declaration.watch = [id, "remote"]
-    #expect(
-      try watchedSourceID(id, declaration: declaration, environment: environment) == "local:"
-        + fixture.source.path)
-  }
-
   @Test func wellKnownRenderingAndDigests() throws {
     let fixture = try CLIFixture()
     let environment = RuntimeEnvironment(

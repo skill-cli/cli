@@ -2,5 +2,13 @@
   "compilers": [
     {"name": "macos-26-xcode-26.6", "runner": "macos-26", "xcode": "26.6"}
   ],
-  "demo": {"product": "skill"}
+  "demo": {"product": "skill"},
+  "platforms": {
+    "linux": [
+      {
+        "name": "linux-swift-6.4.1",
+        "image": "swift:6.4.1-noble@sha256:6304481cf2717966b7ba175162e397ea2f2cc3161909f2b2a5cf40036079a0f7"
+      }
+    ]
+  }
 }

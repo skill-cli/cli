@@ -1,3 +1,4 @@
+import AgentsCore
 import Foundation
 import Testing
 
@@ -9,18 +10,20 @@ struct WatchExecutableTests {
     try fixture.skill()
     try fixture.commit()
     let alias = "example.invalid/rules"
-    try FileManager.default.createDirectory(
-      at: fixture.state("agents.json").deletingLastPathComponent(),
-      withIntermediateDirectories: true)
-    try JSONSerialization.data(withJSONObject: [
-      "sources": [
-        alias: ["local": fixture.source.path],
-        "remote": ["git": "https://example.invalid/rules.git"],
+    try fixture.editManifest { _ in
+      [
+        .upsertSource(
+          NamedSourceDeclaration(
+            name: alias, source: SourceDeclaration(kind: .local, location: fixture.source.path))),
+        .upsertSource(
+          NamedSourceDeclaration(
+            name: "remote",
+            source: SourceDeclaration(kind: .git, location: "https://example.invalid/rules.git"))),
       ]
-    ]).write(to: fixture.state("agents.json"))
+    }
     let added = try fixture.success(["watch", "add", alias])
     #expect(added.stdout.hasPrefix("Watching local:\(fixture.source.path) from "))
-    #expect(try fixture.declaration()["watch"] as? [String] == [alias])
+    #expect(try fixture.declaration().watch == [alias])
   }
 
   @Test(arguments: ["project", "user"])
@@ -82,7 +85,7 @@ struct WatchExecutableTests {
     try fixture.commit()
     let current = try fixture.git(["rev-parse", "HEAD"]).stdout.trimmingCharacters(in: .newlines)
     try fixture.skill("uncommitted", container: "collection/skills")
-    let declaration = try Data(contentsOf: fixture.state("agents.json", scope: scope))
+    let declaration = try Data(contentsOf: fixture.state("agents.yaml", scope: scope))
     let baseline = try Data(contentsOf: fixture.state("agents.watch", scope: scope))
 
     let expected = """
@@ -144,7 +147,7 @@ struct WatchExecutableTests {
           "watch", "diff", fixture.source.path, "frontend-design", "--kind", "instructions",
         ] + scopeOptions
       ).stdout == "up to date\n")
-    #expect(try Data(contentsOf: fixture.state("agents.json", scope: scope)) == declaration)
+    #expect(try Data(contentsOf: fixture.state("agents.yaml", scope: scope)) == declaration)
     #expect(try Data(contentsOf: fixture.state("agents.watch", scope: scope)) == baseline)
     #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
     #expect(try Data(contentsOf: target) == installedBytes)
@@ -164,7 +167,7 @@ struct WatchExecutableTests {
     #expect(try fixture.success(["watch"] + scopeOptions).stdout == "No watched sources.\n")
     #expect(try Data(contentsOf: target) == installedBytes)
     #expect(try Data(contentsOf: fixture.state("agents.resolved", scope: scope)) == lock)
-    #expect((try fixture.declaration(scope: scope)["sources"] as? [String: Any])?[alias] != nil)
+    #expect((try fixture.declaration(scope: scope).sources)[alias] != nil)
   }
 
   @Test func modesLinksBinaryAndKindFiltering() throws {

@@ -7,6 +7,17 @@ Earlier history is in [GitHub releases](https://github.com/skill-cli/cli/release
 
 ## [Unreleased]
 
+## [0.5.0]
+
+### Changed
+
+- Skill commands use the project or user `agents.yaml` declaration and the
+  version 2 JSON ledger shared with `agents`. Prepare the declaration for an
+  existing scope before updating its skills.
+- Editing skill selections preserves other declared components and their
+  configuration. Skill previews and watch status can be read without applying
+  pending changes.
+
 ## [0.4.0] - 2026-10-28
 
 Built on agents-tools/core 0.2.0.

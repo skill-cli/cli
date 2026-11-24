@@ -1,3 +1,5 @@
+import AgentsCore
+import AgentsManifest
 import Foundation
 import Testing
 
@@ -106,10 +108,43 @@ final class CLIFixture {
       to: directory.appendingPathComponent(name + ".md"))
   }
 
-  func declaration(scope: String = "project") throws -> [String: Any] {
-    try #require(
-      JSONSerialization.jsonObject(with: Data(contentsOf: state("agents.json", scope: scope)))
-        as? [String: Any])
+  func store(scope: String = "project") -> StateStore {
+    StateStore(
+      scope: scope == "user" ? .user : .project,
+      environment: RuntimeEnvironment(
+        projectDirectory: project, homeDirectory: home, environment: environment))
+  }
+
+  func declaration(scope: String = "project") throws -> Declaration {
+    try store(scope: scope).loadDeclaration()
+  }
+
+  func writeManifest(_ text: String, scope: String = "project") throws {
+    let url = state("agents.yaml", scope: scope)
+    let bytes = Array(text.utf8)
+    _ = try DeclarationDocument(bytes: bytes, identity: DocumentIdentity(url.path))
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try Data(bytes).write(to: url)
+  }
+
+  func editManifest(
+    scope: String = "project", _ edits: (DeclarationDocument) throws -> [ManifestEdit]
+  ) throws {
+    if !FileManager.default.fileExists(atPath: state("agents.yaml", scope: scope).path) {
+      try writeManifest(
+        "version: 1\n",
+        scope: scope)
+    }
+    let document = try #require(try store(scope: scope).loadManifest())
+    let change = try document.preparing(edits(document))
+    try Data(change.bytes).write(to: state("agents.yaml", scope: scope))
+  }
+
+  func replaceSkill(_ component: ComponentDeclaration) throws {
+    try editManifest { document in
+      [.replaceComponent(try #require(document.node(at: "/components/0")), with: component)]
+    }
   }
 
   func state(_ name: String, scope: String = "project") -> URL {

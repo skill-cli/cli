@@ -1,0 +1,13 @@
+version: 1
+sources:
+  agents-tools:
+    url: https://github.com/agents-tools/.github
+    requirement: {branch: master}
+    subpath: .agent
+components:
+  - kind: instructions
+    agents: [claude-code, codex]
+    sections:
+      - {name: guide}
+      - {name: shared/swift-package-route, source: agents-tools}
+      - {name: shared/swift-package-tests, source: agents-tools}

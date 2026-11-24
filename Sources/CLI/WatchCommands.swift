@@ -26,26 +26,14 @@ struct AddWatch: ParsableCommand {
   @OptionGroup var requirements: RequirementOptions
 
   func run() throws {
-    let (id, seen) = try withRecovery {
-      let environment = RuntimeEnvironment()
-      let sources = try StateStore(scope: location.scope, environment: environment)
-        .loadDeclaration().sources
-      var input = source
-      if sources[source] == nil {
-        input =
-          try sources.keys.sorted().first {
-            try sources[$0]?.identity(environment: environment) == source
-          } ?? source
-      }
-      let id = try declaredSourceID(input, sources: sources, environment: environment)
-      let seen = try SkillOperations.watchOperations().add(
-        input, requirement: requirements.requirement, path: discovery.path,
+    let change = try withRecovery {
+      try SkillOperations.watchOperations().add(
+        source, requirement: requirements.requirement, path: discovery.path,
         scope: location.scope)
-      return (id, seen)
     }
     let suffix =
-      if case .revision(let revision) = seen { " from \(revision.prefix(7))" } else { "" }
-    Terminal.write("Watching \(location.paths.source(id))\(Terminal.line(suffix)).\n")
+      if case .revision(let revision) = change.seen { " from \(revision.prefix(7))" } else { "" }
+    Terminal.write("Watching \(location.paths.source(change.sourceID))\(Terminal.line(suffix)).\n")
   }
 }
 
@@ -57,9 +45,7 @@ struct WatchStatusCommand: ParsableCommand {
   @Flag(help: "Print the versioned JSON report.") var json = false
 
   func run() throws {
-    let statuses = try withRecovery {
-      try SkillOperations.watchOperations().status(scope: location.scope)
-    }
+    let statuses = try SkillOperations.watchOperations().status(scope: location.scope)
     if json {
       try Terminal.json(WatchStatusReport(scope: location.scope.rawValue, statuses: statuses))
     } else {
@@ -80,10 +66,8 @@ struct DiffWatch: ParsableCommand {
   @Flag(help: "Print the versioned JSON report.") var json = false
 
   func run() throws {
-    let status = try withRecovery {
-      try SkillOperations.watchOperations().diff(
-        source, name: name, kind: kind, scope: location.scope)
-    }
+    let status = try SkillOperations.watchOperations().diff(
+      source, name: name, kind: kind, scope: location.scope)
     if json {
       try Terminal.json(WatchDiffReport(scope: location.scope.rawValue, status: status))
     } else {
@@ -101,17 +85,14 @@ struct SeenWatch: ParsableCommand {
   @OptionGroup var location: ScopeOptions
 
   func run() throws {
-    let (id, seen) = try withRecovery {
-      let environment = RuntimeEnvironment()
-      let declaration = try StateStore(scope: location.scope, environment: environment)
-        .loadDeclaration()
-      let id = try watchedSourceID(source, declaration: declaration, environment: environment)
-      let seen = try SkillOperations.watchOperations().seen(
+    let change = try withRecovery {
+      try SkillOperations.watchOperations().seen(
         source, revision: revision, scope: location.scope)
-      return (id, seen)
     }
-    let suffix = if case .revision(let revision) = seen { " at \(revision.prefix(7))" } else { "" }
-    Terminal.write("Marked \(location.paths.source(id)) seen\(Terminal.line(suffix)).\n")
+    let suffix =
+      if case .revision(let revision) = change.seen { " at \(revision.prefix(7))" } else { "" }
+    Terminal.write(
+      "Marked \(location.paths.source(change.sourceID)) seen\(Terminal.line(suffix)).\n")
   }
 }
 
@@ -123,15 +104,11 @@ struct RemoveWatch: ParsableCommand {
   @OptionGroup var location: ScopeOptions
 
   func run() throws {
-    let id = try withRecovery {
-      let environment = RuntimeEnvironment()
-      let declaration = try StateStore(scope: location.scope, environment: environment)
-        .loadDeclaration()
-      let id = try watchedSourceID(source, declaration: declaration, environment: environment)
+    let change = try withRecovery {
       try SkillOperations.watchOperations().remove(source, scope: location.scope)
-      return id
     }
-    Terminal.write("Stopped watching \(location.paths.source(id)); installations are unchanged.\n")
+    Terminal.write(
+      "Stopped watching \(location.paths.source(change.sourceID)); installations are unchanged.\n")
   }
 }
 
@@ -140,32 +117,4 @@ private func parseWatchKind(_ value: String) throws -> WatchItemKind {
     throw ValidationError("Invalid kind '\(value)'; choose skill, instructions, or artifact")
   }
   return kind
-}
-
-// Mutations return a baseline or void. Confirmation identities follow core's
-// subscribed-alias, subscribed-ID, then location precedence without fetching.
-func watchedSourceID(
-  _ input: String, declaration: Declaration, environment: RuntimeEnvironment
-) throws -> String {
-  let aliases = declaration.watch ?? []
-  if !aliases.contains(input) {
-    for alias in aliases {
-      if try declaration.sources[alias]?.identity(environment: environment) == input {
-        return input
-      }
-    }
-  }
-  return try declaredSourceID(input, sources: declaration.sources, environment: environment)
-}
-
-private func declaredSourceID(
-  _ input: String, sources: [String: SourceDeclaration], environment: RuntimeEnvironment
-) throws -> String {
-  if let source = sources[input] {
-    return try source.identity(environment: environment)
-  }
-  return try SourceParser.identity(
-    for: SourceParser.parse(
-      input, currentDirectory: environment.projectDirectory,
-      homeDirectory: environment.homeDirectory))
 }

@@ -86,14 +86,14 @@ Both require a Git repository for local sources and read committed content.
 
 Requirement options on add map directly to declaration forms:
 
-| Option | Declaration | Matching versions |
+| Option | YAML source requirement | Matching versions |
 | --- | --- | --- |
-| `--branch main` | `"branch": "main"` | Git branch |
-| `--revision <rev>` | `"revision": "<rev>"` | Git revision |
-| `--exact 1.2.3` | `"exact": "1.2.3"` | Exact semantic version |
-| `--from 1.2.3` | `"from": "1.2.3"` | At least 1.2.3, below 2.0.0 |
-| `--up-to-next-minor-from 1.2.3` | `"upToNextMinor": "1.2.3"` | At least 1.2.3, below 1.3.0 |
-| `--from 1.2.3 --to 1.8.0` | `"from": "1.2.3", "to": "1.8.0"` | Half-open range [1.2.3, 1.8.0) |
+| `--branch main` | `requirement: {branch: main}` | Git branch |
+| `--revision <rev>` | `requirement: {revision: "<rev>"}` | Git revision |
+| `--exact 1.2.3` | `requirement: {exact: "1.2.3"}` | Exact semantic version |
+| `--from 1.2.3` | `requirement: {from: "1.2.3"}` | At least 1.2.3, below 2.0.0 |
+| `--up-to-next-minor-from 1.2.3` | `requirement: {upToNextMinor: "1.2.3"}` | At least 1.2.3, below 1.3.0 |
+| `--from 1.2.3 --to 1.8.0` | `requirement: {from: "1.2.3", to: "1.8.0"}` | Half-open range [1.2.3, 1.8.0) |
 
 Choose one requirement form; `--to` requires `--from`. With no requirement,
 core uses the latest version tag or the default branch if there are no tags.
@@ -117,7 +117,7 @@ an `@` followed by one of these labels and `:`, so SSH locations such as
 `skill add larksuite/cli lark-base --from 1.0.0`. Use at most one requirement
 selector, one `@path:`, and one `@skill:`; percent-encode an `@` inside a value
 as `%40`. A selector and an option that give the same field must agree; both
-replace the branch and path of a hosted tree URL. `agents.json` stores the
+replace the branch and path of a hosted tree URL. `agents.yaml` stores the
 structured fields, and the alias comes from the location. `watch add` accepts
 requirement and path selectors; `@skill:` applies to `add` and `list <source>`.
 
@@ -212,7 +212,7 @@ baselines, installations, or source working trees. Uncommitted source files are
 ignored. Scheduling checks is left to the caller.
 
 Watch baselines live in `.agent/agents.watch` for project scope or
-`~/.agents/agents.watch` for user scope. `agents.json` owns subscriptions.
+`~/.agents/agents.watch` for user scope. `agents.yaml` owns subscriptions.
 A missing subscription suggests `Run 'skill watch' to list subscriptions`;
 an invalid revision suggests providing a Git revision that resolves to a commit
 in the watched source. Operation failures exit 1; invalid options and unknown
@@ -354,8 +354,35 @@ current directory and user scope uses HOME.
 
 | Scope | Declaration | Lock | Cache |
 | --- | --- | --- | --- |
-| Project | `.agent/agents.json` | `.agent/agents.resolved` | `.agent/cache/` |
-| User | `~/.agents/agents.json` | `~/.agents/agents.resolved` | `~/.agents/cache/` |
+| Project | `.agent/agents.yaml` | `.agent/agents.resolved` | `.agent/cache/` |
+| User | `~/.agents/agents.yaml` | `~/.agents/agents.resolved` | `~/.agents/cache/` |
+
+`agents.yaml` uses core's [YAML declaration format](https://github.com/agents-tools/core/blob/048cbf3f23c8a9986ca3de8654f7ec5f758161ae/Documentation/Reference/Manifest.md).
+The root mapping requires `version: 1`. A declaration can combine skill and
+instruction components:
+
+```yaml
+version: 1
+sources:
+  team:
+    url: https://github.com/owner/skills
+    requirement: {branch: main}
+components:
+  - kind: skills
+    source: team
+    select: [review]
+    agents: [codex]
+  - kind: instructions
+    sections:
+      - {name: guide}
+watch: [team]
+```
+
+Skill operations edit the declaration through core's document layer. Semantic
+no-ops preserve every byte; changes preserve unrelated comments and ordering,
+instruction selections, locked instruction records and targets. A scope with
+lock or watch state but no `agents.yaml` fails with a missing-declaration error;
+restore the declaration from version control before retrying.
 
 Project roots are the current directory, not a search up the Git ancestry.
 Core resolves installation locations, including `CODEX_HOME`,
@@ -364,12 +391,19 @@ under HOME's `.agents` directory.
 
 Read commands and previews do not recover interrupted transactions or write
 declarations, locks, or installations. Doctor inspects existing state without
-fetching sources, writing caches, or creating locks. A pending transaction is
-reported as skill check `pending-recovery`. It is an error check: the state is
-inconsistent until recovery, so doctor sets `ok` to false and exits 1. Human
+fetching sources, writing caches, or creating locks. A recoverable pending
+transaction is
+reported as skill check `pending-recovery`; an unresolved conflict uses
+`unresolved-transaction` and retains core's locations and owner-action details.
+Both are error checks: the state is inconsistent until recovery, so doctor sets
+`ok` to false and exits 1. Human
 output includes the affected state directory. To finish recovery, run
 `skill install --scope user` for `~/.agents`, or run `skill install` in the
 project root for that project's `.agent` directory.
+
+Other read commands fail on pending recovery without changing the journal or
+scope state. An unresolved transaction conflict identifies retained locations;
+inspect those locations and resolve the conflict before retrying.
 
 Commands that change a scope finish pending recovery before proceeding. When
 core reports recovery, the CLI prints a notice on stderr and retries that
@@ -384,6 +418,11 @@ stderr. Human paths are project-relative inside the project in project scope,
 `~/…` under HOME, and absolute otherwise. Local source IDs abbreviate HOME,
 for example `local:~/Developer/team-rules`. Installed skill listings use the
 same path rules. JSON retains full revisions, hashes, and absolute paths.
+
+Manifest failures report each diagnostic as
+`<path>:<line>:<column>: <severity> [<code>]: <message>`, followed by any related
+locations. The remedy asks you to fix the reported `agents.yaml` diagnostics
+and retry. These failures exit 1 and leave stdout empty, including with `--json`.
 
 Errors preserve line breaks. The first line starts with `Error: `; every
 continuation line is indented by two spaces, including Git stderr and remote
@@ -467,7 +506,8 @@ A healthy doctor report:
 ```
 
 Doctor checks include `kind: "skills"` alongside their IDs, severity, message,
-and optional path. `pending-recovery` is an error; other severities come from core.
+and optional path. `pending-recovery` and `unresolved-transaction` are errors;
+other severities come from core.
 `install --json` reports restored skill rows with `name`, `agent`, `mode`, and
 absolute `path`. These definitions are CLI-owned and do not expose core's
 encoded lock objects.
